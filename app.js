@@ -174,6 +174,22 @@ app.get('/', (req, res) => {
             message: "Account deleted successfully"
           }
         }
+      },
+      {
+        path: "/getAllEmails",
+        method: "GET",
+        description: "Get all unique emails in the system",
+        parameters: {},
+        authentication: "API key required",
+        example: {
+          request: {
+            url: "/getAllEmails"
+          },
+          response: {
+            success: true,
+            emails: ["user1@example.com", "user2@example.com"]
+          }
+        }
       }
     ],
     authentication: {
@@ -479,6 +495,18 @@ app.post('/delete/account', validateApiKey, (req, res) => {
       console.error('Error processing account deletion:', error);
       res.status(500).json({ success: false, error: 'Internal server error' });
     }
+  });
+});
+// Get all emails endpoint
+app.get('/getAllEmails', validateApiKey, (req, res) => {
+  db.all('SELECT email FROM users', [], (err, rows) => {
+    if (err) {
+      console.error('Error querying database:', err.message);
+      return res.status(500).json({ success: false, error: 'Database error' });
+    }
+    
+    const emails = rows.map(row => row.email);
+    res.json({ success: true, emails: emails.filter((email, index, self) => self.indexOf(email) === index) });
   });
 });
 

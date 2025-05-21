@@ -210,3 +210,16 @@ All endpoints require authentication via an API key. You can provide it in two w
   }
   ```
 
+### Get All Emails
+
+- **URL**: `/getAllEmails`
+- **Method**: GET
+- **Authentication**: API key required
+- **Success Response**: 
+  ```json
+  {
+    "success": true,
+    "emails": ["user1@example.com", "user2@example.com"]
+  }
+  ```
+
