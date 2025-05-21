@@ -6,7 +6,7 @@ A REST API for user management with authentication.
 
 - Node.js (v14 or later)
 - npm
-- SQLite
+- SQLite3
 
 ## Installation
 
@@ -191,25 +191,3 @@ All endpoints require authentication via an API key. You can provide it in two w
   }
   ```
 
-## Testing with Postman
-
-1. Create a new request in Postman
-2. Set the URL to `http://localhost:3000/endpoint`
-3. Add the API key in one of two ways:
-   - In the Headers tab, add a key `x-api-key` with your API key as the value
-   - In the URL as a query parameter: `http://localhost:3000/endpoint?apiKey=your_api_key`
-4. For POST requests, go to the Body tab, select "raw" and "JSON", then enter the required JSON data
-5. Send the request
-
-## Error Handling
-
-All endpoints return a consistent error format:
-
-```json
-{
-  "success": false,
-  "error": "Error message"
-}
-```
-
-HTTP status codes are also used appropriately (200, 201, 400, 401, 404, 409, 500).
