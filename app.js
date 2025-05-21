@@ -176,8 +176,6 @@ app.get('/', (req, res) => {
 // Register a new user
 app.post('/register', validateApiKey, async (req, res) => {
   const { username, email, password } = req.body;
-
-  console.log('Request body:', req.body);
   
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
