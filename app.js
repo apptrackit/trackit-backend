@@ -152,6 +152,28 @@ app.get('/', (req, res) => {
             password: "[hashed password]"
           }
         }
+      },
+      {
+        path: "/delete/account",
+        method: "POST",
+        description: "Delete user account",
+        parameters: {
+          username: "Username of the account to delete",
+          password: "Current password for verification"
+        },
+        authentication: "API key required",
+        example: {
+          request: {
+            body: {
+              username: "johndoe",
+              password: "securepassword"
+            }
+          },
+          response: {
+            success: true,
+            message: "Account deleted successfully"
+          }
+        }
       }
     ],
     authentication: {
@@ -414,6 +436,49 @@ app.get('/admin', validateApiKey, (req, res) => {
     
     // Return user data directly with success flag
     res.json({ ...user });
+  });
+});
+
+// Delete account endpoint
+app.post('/delete/account', validateApiKey, (req, res) => {
+  const { username, password } = req.body;
+  
+  if (!username || !password) {
+    return res.status(400).json({ success: false, error: 'Username and password are required' });
+  }
+
+  db.get('SELECT * FROM users WHERE username = ?', [username], async (err, user) => {
+    if (err) {
+      console.error('Error querying database:', err.message);
+      return res.status(500).json({ success: false, error: 'Database error' });
+    }
+    
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+    
+    try {
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      
+      if (!isPasswordValid) {
+        return res.status(401).json({ success: false, error: 'Password is incorrect' });
+      }
+      
+      db.run('DELETE FROM users WHERE username = ?', 
+        [username], 
+        function(err) {
+          if (err) {
+            console.error('Error deleting account:', err.message);
+            return res.status(500).json({ success: false, error: 'Database error' });
+          }
+          
+          res.json({ success: true, message: 'Account deleted successfully' });
+        }
+      );
+    } catch (error) {
+      console.error('Error processing account deletion:', error);
+      res.status(500).json({ success: false, error: 'Internal server error' });
+    }
   });
 });
 

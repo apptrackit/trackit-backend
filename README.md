@@ -191,3 +191,22 @@ All endpoints require authentication via an API key. You can provide it in two w
   }
   ```
 
+### Delete Account
+
+- **URL**: `/delete/account`
+- **Method**: POST
+- **Body**:
+  ```json
+  {
+    "username": "johndoe",
+    "password": "securepassword"
+  }
+  ```
+- **Success Response**: 
+  ```json
+  {
+    "success": true,
+    "message": "Account deleted successfully"
+  }
+  ```
+
