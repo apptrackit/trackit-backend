@@ -419,6 +419,6 @@ app.get('/admin', validateApiKey, (req, res) => {
   });
 });
 
-app.listen(process.env.PORT, () => {
-  console.log('Server running on port', process.env.PORT);
+app.listen(process.env.PORT, process.env.HOST, () => {
+  console.log(`Server running on http://${process.env.HOST}:${process.env.PORT}`);
 });

@@ -30,12 +30,14 @@ DB_PATH=/path/to/your/database.db
 API_KEY=your_secret_api_key
 PORT=3000
 SALT=10
+HOST=localhost
 ```
 
 - `DB_PATH`: Path to your SQLite database file
 - `API_KEY`: Secret key for API authentication
 - `PORT`: Port on which the server will run
 - `SALT`: Number of salt rounds for password hashing (recommended: 10)
+- `HOST`: Hostname for the server
 
 ## Database Setup
 
