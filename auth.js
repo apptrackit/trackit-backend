@@ -1,6 +1,6 @@
 const validateApiKey = (req, res, next) => {
   // Check for API key in header
-  const headerApiKey = req.headers['apiKey'];
+  const headerApiKey = req.headers['x-api-key'];
   // Check for API key in query parameter
   const queryApiKey = req.query.apiKey;
   
