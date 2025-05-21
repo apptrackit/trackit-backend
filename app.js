@@ -146,9 +146,10 @@ app.get('/', (req, res) => {
             url: "/admin?username=johndoe"
           },
           response: {
-            user: {
-              // user data
-            }
+            id: 1,
+            username: "johndoe",
+            email: "john@example.com",
+            password: "[hashed password]"
           }
         }
       }
@@ -413,7 +414,8 @@ app.get('/admin', validateApiKey, (req, res) => {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
     
-    res.json({ user });
+    // Return user data directly with success flag
+    res.json({ ...user });
   });
 });
 

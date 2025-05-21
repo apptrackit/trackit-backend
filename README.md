@@ -182,12 +182,10 @@ All endpoints require authentication via an API key. You can provide it in two w
 - **Success Response**: 
   ```json
   {
-    "user": {
-      "id": 1,
-      "username": "johndoe",
-      "email": "john@example.com",
-      "password": "[hashed password]"
-    }
+    "id": 1,
+    "username": "johndoe",
+    "email": "john@example.com",
+    "password": "[hashed password]"
   }
   ```
 
