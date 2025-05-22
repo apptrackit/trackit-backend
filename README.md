@@ -18,8 +18,9 @@ cd trackit_backend
 
 2. Install dependencies:
 ```
-npm install express sqlite3 bcrypt dotenv
+npm install
 ```
+This will install all dependencies listed in `package.json`.
 
 ## Configuration
 
