@@ -65,7 +65,7 @@ exports.login = async (req, res) => {
       res.json({ 
         success: true, 
         authenticated: passwordMatch,
-        message: passwordMatch ? 'Authentication successful' : 'Invalid password' 
+        message: passwordMatch ? 'Authentication successful!' : 'Invalid password' 
       });
     } catch (error) {
       console.error('Error comparing passwords:', error);
