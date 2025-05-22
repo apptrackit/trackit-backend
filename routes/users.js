@@ -3,6 +3,9 @@ const router = express.Router();
 const { validateApiKey } = require('../auth');
 const userController = require('../controllers/userController');
 
+// Register a new user
+router.post('/register', validateApiKey, userController.register);
+
 // Change password endpoint
 router.post('/change/password', validateApiKey, userController.changePassword);
 

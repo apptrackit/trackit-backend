@@ -95,26 +95,6 @@ All endpoints require authentication via an API key. You can provide it in two w
 
 ### Authentication
 
-#### Register a New User
-
-- **URL**: `/auth/register`
-- **Method**: POST
-- **Body**:
-  ```json
-  {
-    "username": "johndoe",
-    "email": "john@example.com",
-    "password": "securepassword"
-  }
-  ```
-- **Success Response**: 
-  ```json
-  {
-    "success": true,
-    "id": 1
-  }
-  ```
-
 #### User Login
 
 - **URL**: `/auth/login`
@@ -136,6 +116,26 @@ All endpoints require authentication via an API key. You can provide it in two w
   ```
 
 ### User Management
+
+#### Register a New User
+
+- **URL**: `/user/register`
+- **Method**: POST
+- **Body**:
+  ```json
+  {
+    "username": "johndoe",
+    "email": "john@example.com",
+    "password": "securepassword"
+  }
+  ```
+- **Success Response**: 
+  ```json
+  {
+    "success": true,
+    "id": 1
+  }
+  ```
 
 #### Change Password
 
