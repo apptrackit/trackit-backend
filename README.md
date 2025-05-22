@@ -305,22 +305,71 @@ For authenticated user endpoints, you also need to provide a JWT token in the Au
 
 ## Session Management
 
-The API uses JWT (JSON Web Tokens) for session management. Here's how it works:
+The API uses JWT (JSON Web Tokens) with a refresh token system for session management. Here's how it works:
 
-1. When a user logs in, they receive a JWT token that's valid for 7 days
-2. This token should be stored securely on the client (e.g., in localStorage or secure cookies)
-3. For all authenticated requests, include the token in the Authorization header
-4. The token is automatically invalidated when:
+1. When a user logs in, they receive:
+   - Access token (valid for 7 days)
+   - Refresh token (valid for 365 days)
+2. For all authenticated requests, include the access token in the Authorization header
+3. When the access token expires:
+   - Use the refresh token to get a new access token
+   - User stays logged in without needing to re-enter credentials
+4. The session is invalidated when:
    - The user logs out
-   - The token expires (after 7 days)
-   - The token is invalid or tampered with
+   - The refresh token expires (after 365 days)
+   - The tokens are invalid or tampered with
 
-Example of making an authenticated request:
+### Authentication Flow
+
+1. **Login**:
+```bash
+curl -X POST http://localhost:3000/auth/login \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: your_api_key" \
+  -d '{
+    "username": "johndoe",
+    "password": "securepassword"
+  }'
+```
+Response:
+```json
+{
+  "success": true,
+  "authenticated": true,
+  "message": "Authentication successful",
+  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+  "refreshToken": "a1b2c3d4e5f6...",
+  "user": {
+    "id": 1,
+    "username": "johndoe",
+    "email": "john@example.com"
+  }
+}
+```
+
+2. **Refresh Access Token**:
+```bash
+curl -X POST http://localhost:3000/auth/refresh \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: your_api_key" \
+  -d '{
+    "refreshToken": "your_refresh_token"
+  }'
+```
+Response:
+```json
+{
+  "success": true,
+  "accessToken": "eyJhbGciOiJIUzI1NiIs..."
+}
+```
+
+3. **Making Authenticated Requests**:
 ```bash
 curl http://localhost:3000/user/change/email \
   -H "Content-Type: application/json" \
   -H "x-api-key: your_api_key" \
-  -H "Authorization: Bearer your_jwt_token" \
+  -H "Authorization: Bearer your_access_token" \
   -d '{
     "username": "johndoe",
     "newEmail": "newemail@example.com",
@@ -328,12 +377,35 @@ curl http://localhost:3000/user/change/email \
   }'
 ```
 
-To check if a session is still valid (e.g., when app starts):
+4. **Check Session Status**:
 ```bash
 curl http://localhost:3000/auth/check \
   -H "x-api-key: your_api_key" \
-  -H "Authorization: Bearer your_jwt_token"
+  -H "Authorization: Bearer your_access_token"
 ```
+
+5. **Logout**:
+```bash
+curl -X POST http://localhost:3000/auth/logout \
+  -H "x-api-key: your_api_key" \
+  -H "Authorization: Bearer your_access_token"
+```
+
+### Client Implementation
+
+For the best user experience, implement the following in your client application:
+
+1. Store both tokens securely (e.g., in secure storage or encrypted cookies)
+2. Use the access token for all API requests
+3. When you get a 401 error (expired token):
+   - Use the refresh token to get a new access token
+   - Retry the original request with the new access token
+4. If the refresh token request fails:
+   - Redirect to login screen
+5. On logout:
+   - Call the logout endpoint
+   - Clear stored tokens
+   - Redirect to login screen
 
 ## Replit
 - pull updates `git pull origin main`

@@ -1,6 +1,12 @@
 const db = require('../database');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+
+// Generate refresh token
+const generateRefreshToken = () => {
+  return crypto.randomBytes(40).toString('hex');
+};
 
 // Login user
 exports.login = async (req, res) => {
@@ -31,21 +37,27 @@ exports.login = async (req, res) => {
         });
       }
 
-      // Create JWT token
-      const token = jwt.sign(
+      // Create access token (7 days)
+      const accessToken = jwt.sign(
         { userId: user.id, username: user.username },
         process.env.JWT_SECRET,
         { expiresIn: '7d' }
       );
 
-      // Calculate expiration date (7 days from now)
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7);
+      // Create refresh token (365 days)
+      const refreshToken = generateRefreshToken();
+
+      // Calculate expiration dates
+      const accessTokenExpiresAt = new Date();
+      accessTokenExpiresAt.setDate(accessTokenExpiresAt.getDate() + 7);
+
+      const refreshTokenExpiresAt = new Date();
+      refreshTokenExpiresAt.setDate(refreshTokenExpiresAt.getDate() + 365);
 
       // Store session in database
       db.run(
-        'INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)',
-        [user.id, token, expiresAt.toISOString()],
+        'INSERT INTO sessions (user_id, access_token, refresh_token, access_token_expires_at, refresh_token_expires_at) VALUES (?, ?, ?, ?, ?)',
+        [user.id, accessToken, refreshToken, accessTokenExpiresAt.toISOString(), refreshTokenExpiresAt.toISOString()],
         function(err) {
           if (err) {
             console.error('Error creating session:', err);
@@ -56,7 +68,8 @@ exports.login = async (req, res) => {
             success: true, 
             authenticated: true,
             message: 'Authentication successful',
-            token: token,
+            accessToken: accessToken,
+            refreshToken: refreshToken,
             user: {
               id: user.id,
               username: user.username,
@@ -72,6 +85,69 @@ exports.login = async (req, res) => {
   });
 };
 
+// Refresh access token
+exports.refreshToken = async (req, res) => {
+  const { refreshToken } = req.body;
+  
+  if (!refreshToken) {
+    return res.status(400).json({ success: false, error: 'Refresh token is required' });
+  }
+
+  // Check if refresh token exists and is not expired
+  db.get(
+    'SELECT * FROM sessions WHERE refresh_token = ? AND refresh_token_expires_at > datetime("now")',
+    [refreshToken],
+    async (err, session) => {
+      if (err) {
+        console.error('Error checking refresh token:', err);
+        return res.status(500).json({ success: false, error: 'Database error' });
+      }
+
+      if (!session) {
+        return res.status(401).json({ 
+          success: false, 
+          error: 'Invalid or expired refresh token' 
+        });
+      }
+
+      // Get user info
+      db.get('SELECT * FROM users WHERE id = ?', [session.user_id], (err, user) => {
+        if (err) {
+          console.error('Error getting user:', err);
+          return res.status(500).json({ success: false, error: 'Database error' });
+        }
+
+        // Create new access token
+        const newAccessToken = jwt.sign(
+          { userId: user.id, username: user.username },
+          process.env.JWT_SECRET,
+          { expiresIn: '7d' }
+        );
+
+        // Update access token in database
+        const newAccessTokenExpiresAt = new Date();
+        newAccessTokenExpiresAt.setDate(newAccessTokenExpiresAt.getDate() + 7);
+
+        db.run(
+          'UPDATE sessions SET access_token = ?, access_token_expires_at = ? WHERE refresh_token = ?',
+          [newAccessToken, newAccessTokenExpiresAt.toISOString(), refreshToken],
+          function(err) {
+            if (err) {
+              console.error('Error updating access token:', err);
+              return res.status(500).json({ success: false, error: 'Failed to refresh token' });
+            }
+
+            res.json({
+              success: true,
+              accessToken: newAccessToken
+            });
+          }
+        );
+      });
+    }
+  );
+};
+
 // Logout user
 exports.logout = async (req, res) => {
   const token = req.headers['authorization']?.split(' ')[1];
@@ -80,7 +156,7 @@ exports.logout = async (req, res) => {
     return res.status(400).json({ success: false, error: 'No token provided' });
   }
 
-  db.run('DELETE FROM sessions WHERE token = ?', [token], function(err) {
+  db.run('DELETE FROM sessions WHERE access_token = ?', [token], function(err) {
     if (err) {
       console.error('Error deleting session:', err);
       return res.status(500).json({ success: false, error: 'Failed to logout' });
@@ -107,7 +183,7 @@ exports.checkSession = async (req, res) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     // Check if token exists in database and is not expired
-    db.get('SELECT * FROM sessions WHERE token = ? AND expires_at > datetime("now")', 
+    db.get('SELECT * FROM sessions WHERE access_token = ? AND access_token_expires_at > datetime("now")', 
       [token], 
       (err, session) => {
         if (err) {

@@ -28,9 +28,11 @@ const db = new sqlite3.Database(dbPath, (err) => {
   db.run(`CREATE TABLE IF NOT EXISTS sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    token TEXT NOT NULL UNIQUE,
+    access_token TEXT NOT NULL UNIQUE,
+    refresh_token TEXT NOT NULL UNIQUE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    expires_at DATETIME NOT NULL,
+    access_token_expires_at DATETIME NOT NULL,
+    refresh_token_expires_at DATETIME NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   )`, (err) => {
     if (err) {

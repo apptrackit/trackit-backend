@@ -6,6 +6,9 @@ const authController = require('../controllers/authController');
 // Login endpoint
 router.post('/login', validateApiKey, authController.login);
 
+// Refresh token endpoint
+router.post('/refresh', validateApiKey, authController.refreshToken);
+
 // Logout endpoint
 router.post('/logout', validateApiKey, validateToken, authController.logout);
 
