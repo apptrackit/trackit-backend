@@ -117,7 +117,8 @@ For authenticated user endpoints, you also need to provide a JWT token in the Au
     "success": true,
     "authenticated": true,
     "message": "Authentication successful",
-    "token": "eyJhbGciOiJIUzI1NiIs...",
+    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+    "refreshToken": "a1b2c3d4e5f6...",
     "user": {
       "id": 1,
       "username": "johndoe",
@@ -325,75 +326,87 @@ The API uses JWT (JSON Web Tokens) with a self-refreshing token system for sessi
 ### Authentication Flow
 
 1. **Login**:
-```bash
-curl -X POST http://localhost:3000/auth/login \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: your_api_key" \
-  -d '{
+- **URL**: `/auth/login`
+- **Method**: POST
+- **Body**:
+  ```json
+  {
     "username": "johndoe",
     "password": "securepassword"
-  }'
-```
-Response:
-```json
-{
-  "success": true,
-  "authenticated": true,
-  "message": "Authentication successful",
-  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
-  "refreshToken": "a1b2c3d4e5f6...",
-  "user": {
-    "id": 1,
-    "username": "johndoe",
-    "email": "john@example.com"
   }
-}
-```
+  ```
+- **Success Response**: 
+  ```json
+  {
+    "success": true,
+    "authenticated": true,
+    "message": "Authentication successful",
+    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+    "refreshToken": "a1b2c3d4e5f6...",
+    "user": {
+      "id": 1,
+      "username": "johndoe",
+      "email": "john@example.com"
+    }
+  }
+  ```
 
 2. **Refresh Tokens**:
-```bash
-curl -X POST http://localhost:3000/auth/refresh \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: your_api_key" \
-  -d '{
+- **URL**: `/auth/refresh`
+- **Method**: POST
+- **Body**:
+  ```json
+  {
     "refreshToken": "your_refresh_token"
-  }'
-```
-Response:
-```json
-{
-  "success": true,
-  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
-  "refreshToken": "new_refresh_token..."
-}
-```
+  }
+  ```
+- **Success Response**: 
+  ```json
+  {
+    "success": true,
+    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+    "refreshToken": "new_refresh_token..."
+  }
+  ```
 
 3. **Making Authenticated Requests**:
-```bash
-curl http://localhost:3000/user/change/email \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: your_api_key" \
-  -H "Authorization: Bearer your_access_token" \
-  -d '{
-    "username": "johndoe",
-    "newEmail": "newemail@example.com",
-    "password": "securepassword"
-  }'
-```
+- **Headers Required**:
+  - `x-api-key: your_api_key`
+  - `Authorization: Bearer your_access_token`
 
 4. **Check Session Status**:
-```bash
-curl http://localhost:3000/auth/check \
-  -H "x-api-key: your_api_key" \
-  -H "Authorization: Bearer your_access_token"
-```
+- **URL**: `/auth/check`
+- **Method**: GET
+- **Headers**: 
+  - `x-api-key: your_api_key`
+  - `Authorization: Bearer your_access_token`
+- **Success Response**: 
+  ```json
+  {
+    "success": true,
+    "isAuthenticated": true,
+    "message": "Session is valid",
+    "user": {
+      "id": 1,
+      "username": "johndoe",
+      "email": "john@example.com"
+    }
+  }
+  ```
 
 5. **Logout**:
-```bash
-curl -X POST http://localhost:3000/auth/logout \
-  -H "x-api-key: your_api_key" \
-  -H "Authorization: Bearer your_access_token"
-```
+- **URL**: `/auth/logout`
+- **Method**: POST
+- **Headers**: 
+  - `x-api-key: your_api_key`
+  - `Authorization: Bearer your_access_token`
+- **Success Response**: 
+  ```json
+  {
+    "success": true,
+    "message": "Logged out successfully"
+  }
+  ```
 
 ### Client Implementation
 
