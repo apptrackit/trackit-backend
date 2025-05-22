@@ -44,7 +44,7 @@ HOST=localhost
 
 The application follows a modular structure:
 ```
-trackit_backend/
+trackit-backend/
 │
 ├── app.js                 # Main application entry point
 ├── auth.js                # Authentication middleware
