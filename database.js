@@ -24,6 +24,21 @@ const db = new sqlite3.Database(dbPath, (err) => {
       console.log('Users table ready');
     }
   });
+
+  db.run(`CREATE TABLE IF NOT EXISTS sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    token TEXT NOT NULL UNIQUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    expires_at DATETIME NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  )`, (err) => {
+    if (err) {
+      console.error('Error creating sessions table:', err.message);
+    } else {
+      console.log('Sessions table ready');
+    }
+  });
 });
 
 process.on('SIGINT', () => {

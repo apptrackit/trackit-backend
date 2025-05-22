@@ -32,6 +32,7 @@ API_KEY=your_secret_api_key
 PORT=3000
 SALT=10
 HOST=localhost
+JWT_SECRET=your_jwt_secret_key
 ```
 
 - `DB_PATH`: Path to your SQLite database file
@@ -39,6 +40,7 @@ HOST=localhost
 - `PORT`: Port on which the server will run
 - `SALT`: Number of salt rounds for password hashing (recommended: 10)
 - `HOST`: Hostname for the server
+- `JWT_SECRET`: Secret key for signing JWT tokens (should be a long, random string)
 
 ## Project Structure
 
@@ -91,6 +93,9 @@ All endpoints require authentication via an API key. You can provide it in two w
 1. As a header: `x-api-key: your_api_key`
 2. As a query parameter: `?apiKey=your_api_key`
 
+For authenticated user endpoints, you also need to provide a JWT token in the Authorization header:
+`Authorization: Bearer your_jwt_token`
+
 ## API Endpoints
 
 ### Authentication
@@ -111,7 +116,55 @@ All endpoints require authentication via an API key. You can provide it in two w
   {
     "success": true,
     "authenticated": true,
-    "message": "Authentication successful"
+    "message": "Authentication successful",
+    "token": "eyJhbGciOiJIUzI1NiIs...",
+    "user": {
+      "id": 1,
+      "username": "johndoe",
+      "email": "john@example.com"
+    }
+  }
+  ```
+
+#### Check Session Status
+
+- **URL**: `/auth/check`
+- **Method**: GET
+- **Headers**: 
+  - `Authorization: Bearer your_jwt_token`
+- **Success Response**: 
+  ```json
+  {
+    "success": true,
+    "isAuthenticated": true,
+    "message": "Session is valid",
+    "user": {
+      "id": 1,
+      "username": "johndoe",
+      "email": "john@example.com"
+    }
+  }
+  ```
+- **Expired/Invalid Session Response**:
+  ```json
+  {
+    "success": false,
+    "isAuthenticated": false,
+    "message": "Session expired or invalid"
+  }
+  ```
+
+#### Logout
+
+- **URL**: `/auth/logout`
+- **Method**: POST
+- **Headers**: 
+  - `Authorization: Bearer your_jwt_token`
+- **Success Response**: 
+  ```json
+  {
+    "success": true,
+    "message": "Logged out successfully"
   }
   ```
 
@@ -250,7 +303,37 @@ All endpoints require authentication via an API key. You can provide it in two w
   }
   ```
 
+## Session Management
 
+The API uses JWT (JSON Web Tokens) for session management. Here's how it works:
+
+1. When a user logs in, they receive a JWT token that's valid for 7 days
+2. This token should be stored securely on the client (e.g., in localStorage or secure cookies)
+3. For all authenticated requests, include the token in the Authorization header
+4. The token is automatically invalidated when:
+   - The user logs out
+   - The token expires (after 7 days)
+   - The token is invalid or tampered with
+
+Example of making an authenticated request:
+```bash
+curl http://localhost:3000/user/change/email \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: your_api_key" \
+  -H "Authorization: Bearer your_jwt_token" \
+  -d '{
+    "username": "johndoe",
+    "newEmail": "newemail@example.com",
+    "password": "securepassword"
+  }'
+```
+
+To check if a session is still valid (e.g., when app starts):
+```bash
+curl http://localhost:3000/auth/check \
+  -H "x-api-key: your_api_key" \
+  -H "Authorization: Bearer your_jwt_token"
+```
 
 ## Replit
 - pull updates `git pull origin main`
