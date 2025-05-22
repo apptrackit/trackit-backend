@@ -39,6 +39,27 @@ HOST=localhost
 - `SALT`: Number of salt rounds for password hashing (recommended: 10)
 - `HOST`: Hostname for the server
 
+## Project Structure
+
+The application follows a modular structure:
+```
+trackit_backend/
+│
+├── app.js                 # Main application entry point
+├── auth.js                # Authentication middleware
+├── database.js            # Database connection and setup
+│
+├── controllers/           # Business logic
+│   ├── authController.js  # Authentication logic
+│   ├── userController.js  # User management logic
+│   └── adminController.js # Admin operations
+│
+└── routes/                # API route definitions
+    ├── auth.js            # Authentication routes
+    ├── users.js           # User management routes
+    └── admin.js           # Admin routes
+```
+
 ## Database Setup
 
 The application expects a SQLite database with a `users` table. You can create it with:
@@ -57,7 +78,7 @@ CREATE TABLE users (
 Start the server with:
 
 ```
-npm run start
+node app.js
 ```
 
 The server will run on the port specified in your `.env` file (default: 3000).
@@ -71,15 +92,11 @@ All endpoints require authentication via an API key. You can provide it in two w
 
 ## API Endpoints
 
-### Documentation
+### Authentication
 
-- **URL**: `/`
-- **Method**: GET
-- **Description**: API documentation and usage information
+#### Register a New User
 
-### Register a New User
-
-- **URL**: `/register`
+- **URL**: `/auth/register`
 - **Method**: POST
 - **Body**:
   ```json
@@ -97,9 +114,9 @@ All endpoints require authentication via an API key. You can provide it in two w
   }
   ```
 
-### User Login
+#### User Login
 
-- **URL**: `/login`
+- **URL**: `/auth/login`
 - **Method**: POST
 - **Body**:
   ```json
@@ -117,9 +134,11 @@ All endpoints require authentication via an API key. You can provide it in two w
   }
   ```
 
-### Change Password
+### User Management
 
-- **URL**: `/change/password`
+#### Change Password
+
+- **URL**: `/user/change/password`
 - **Method**: POST
 - **Body**:
   ```json
@@ -137,9 +156,9 @@ All endpoints require authentication via an API key. You can provide it in two w
   }
   ```
 
-### Change Username
+#### Change Username
 
-- **URL**: `/change/username`
+- **URL**: `/user/change/username`
 - **Method**: POST
 - **Body**:
   ```json
@@ -157,9 +176,9 @@ All endpoints require authentication via an API key. You can provide it in two w
   }
   ```
 
-### Change Email
+#### Change Email
 
-- **URL**: `/change/email`
+- **URL**: `/user/change/email`
 - **Method**: POST
 - **Body**:
   ```json
@@ -177,23 +196,9 @@ All endpoints require authentication via an API key. You can provide it in two w
   }
   ```
 
-### Admin User Lookup
+#### Delete Account
 
-- **URL**: `/admin?username=johndoe`
-- **Method**: GET
-- **Success Response**: 
-  ```json
-  {
-    "id": 1,
-    "username": "johndoe",
-    "email": "john@example.com",
-    "password": "[hashed password]"
-  }
-  ```
-
-### Delete Account
-
-- **URL**: `/delete/account`
+- **URL**: `/user/delete`
 - **Method**: POST
 - **Body**:
   ```json
@@ -210,11 +215,32 @@ All endpoints require authentication via an API key. You can provide it in two w
   }
   ```
 
-### Get All Emails
+### Admin Operations
 
-- **URL**: `/getAllEmails`
+#### Admin User Lookup
+
+- **URL**: `/admin/user`
+- **Method**: POST
+- **Body**:
+  ```json
+  {
+    "username": "johndoe"
+  }
+  ```
+- **Success Response**: 
+  ```json
+  {
+    "id": 1,
+    "username": "johndoe",
+    "email": "john@example.com",
+    "password": "[hashed password]"
+  }
+  ```
+
+#### Get All Emails
+
+- **URL**: `/admin/emails`
 - **Method**: GET
-- **Authentication**: API key required
 - **Success Response**: 
   ```json
   {

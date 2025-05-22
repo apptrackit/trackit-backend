@@ -1,11 +1,11 @@
 const db = require('../database');
 
-// Get user info
+// Get user info - updated to use request body instead of query parameters
 exports.getUserInfo = (req, res) => {
-  const { username } = req.query;
+  const { username } = req.body;
   
   if (!username) {
-    return res.status(400).json({ success: false, error: 'Username parameter is required' });
+    return res.status(400).json({ success: false, error: 'Username is required' });
   }
 
   db.get('SELECT * FROM users WHERE username = ?', [username], (err, user) => {
