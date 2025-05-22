@@ -250,3 +250,7 @@ All endpoints require authentication via an API key. You can provide it in two w
   }
   ```
 
+
+
+## Replit
+- pull updates `git pull origin main`
