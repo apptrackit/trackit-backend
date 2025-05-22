@@ -33,6 +33,9 @@ const db = new sqlite3.Database(dbPath, (err) => {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     access_token_expires_at DATETIME NOT NULL,
     refresh_token_expires_at DATETIME NOT NULL,
+    last_refresh_at DATETIME,
+    refresh_count INTEGER DEFAULT 0,
+    is_revoked BOOLEAN DEFAULT 0,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   )`, (err) => {
     if (err) {

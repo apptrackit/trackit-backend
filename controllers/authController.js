@@ -124,22 +124,30 @@ exports.refreshToken = async (req, res) => {
           { expiresIn: '7d' }
         );
 
-        // Update access token in database
+        // Generate new refresh token
+        const newRefreshToken = generateRefreshToken();
+
+        // Calculate new expiration dates
         const newAccessTokenExpiresAt = new Date();
         newAccessTokenExpiresAt.setDate(newAccessTokenExpiresAt.getDate() + 7);
 
+        const newRefreshTokenExpiresAt = new Date();
+        newRefreshTokenExpiresAt.setDate(newRefreshTokenExpiresAt.getDate() + 365);
+
+        // Update session with new tokens
         db.run(
-          'UPDATE sessions SET access_token = ?, access_token_expires_at = ? WHERE refresh_token = ?',
-          [newAccessToken, newAccessTokenExpiresAt.toISOString(), refreshToken],
+          'UPDATE sessions SET access_token = ?, refresh_token = ?, access_token_expires_at = ?, refresh_token_expires_at = ?, last_refresh_at = datetime("now"), refresh_count = refresh_count + 1 WHERE refresh_token = ?',
+          [newAccessToken, newRefreshToken, newAccessTokenExpiresAt.toISOString(), newRefreshTokenExpiresAt.toISOString(), refreshToken],
           function(err) {
             if (err) {
-              console.error('Error updating access token:', err);
-              return res.status(500).json({ success: false, error: 'Failed to refresh token' });
+              console.error('Error updating tokens:', err);
+              return res.status(500).json({ success: false, error: 'Failed to refresh tokens' });
             }
 
             res.json({
               success: true,
-              accessToken: newAccessToken
+              accessToken: newAccessToken,
+              refreshToken: newRefreshToken
             });
           }
         );

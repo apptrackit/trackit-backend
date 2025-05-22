@@ -305,19 +305,22 @@ For authenticated user endpoints, you also need to provide a JWT token in the Au
 
 ## Session Management
 
-The API uses JWT (JSON Web Tokens) with a refresh token system for session management. Here's how it works:
+The API uses JWT (JSON Web Tokens) with a self-refreshing token system for session management. Here's how it works:
 
 1. When a user logs in, they receive:
    - Access token (valid for 7 days)
    - Refresh token (valid for 365 days)
 2. For all authenticated requests, include the access token in the Authorization header
 3. When the access token expires:
-   - Use the refresh token to get a new access token
+   - Use the refresh token to get new tokens
+   - Both access token and refresh token are refreshed
+   - New access token is valid for 7 days
+   - New refresh token is valid for 365 days
    - User stays logged in without needing to re-enter credentials
 4. The session is invalidated when:
    - The user logs out
-   - The refresh token expires (after 365 days)
    - The tokens are invalid or tampered with
+   - The session is explicitly revoked
 
 ### Authentication Flow
 
@@ -347,7 +350,7 @@ Response:
 }
 ```
 
-2. **Refresh Access Token**:
+2. **Refresh Tokens**:
 ```bash
 curl -X POST http://localhost:3000/auth/refresh \
   -H "Content-Type: application/json" \
@@ -360,7 +363,8 @@ Response:
 ```json
 {
   "success": true,
-  "accessToken": "eyJhbGciOiJIUzI1NiIs..."
+  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+  "refreshToken": "new_refresh_token..."
 }
 ```
 
