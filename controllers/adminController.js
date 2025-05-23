@@ -4,13 +4,6 @@ require('dotenv').config();
 const saltRounds = parseInt(process.env.SALT_ROUNDS);
 
 exports.getAllUserData = (req, res) => {
-  // Only allow requests from localhost
-  const allowedHosts = ['127.0.0.1', '::1', 'localhost'];
-  const remoteAddress = req.connection.remoteAddress || req.socket.remoteAddress;
-
-  if (!allowedHosts.includes(remoteAddress)) {
-    return res.status(404);
-  }
 
   db.all('SELECT * FROM users', [], (err, rows) => {
     if (err) {
@@ -63,13 +56,6 @@ exports.getAllEmails = (req, res) => {
 
 // New function to update user data
 exports.updateUser = (req, res) => {
-  // Only allow requests from localhost
-  const allowedHosts = ['127.0.0.1', '::1', 'localhost'];
-  const remoteAddress = req.connection.remoteAddress || req.socket.remoteAddress;
-
-  if (!allowedHosts.includes(remoteAddress)) {
-    return res.status(404).json({ success: false, error: 'Not found' });
-  }
 
   const userData = req.body;
   if (!userData.id) {
@@ -138,13 +124,6 @@ exports.updateUser = (req, res) => {
 
 // New function to delete a user
 exports.deleteUser = (req, res) => {
-  // Only allow requests from localhost
-  const allowedHosts = ['127.0.0.1', '::1', 'localhost'];
-  const remoteAddress = req.connection.remoteAddress || req.socket.remoteAddress;
-
-  if (!allowedHosts.includes(remoteAddress)) {
-    return res.status(404).json({ success: false, error: 'Not found' });
-  }
 
   const { id } = req.body;
 
