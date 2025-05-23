@@ -101,7 +101,7 @@
             // Check if user is already logged in
             const isLoggedIn = localStorage.getItem('adminLoggedIn');
             if (isLoggedIn === 'true') {
-                showBlankPage();
+                redirectToDashboard();
             }
             
             loginForm.addEventListener('submit', function(e) {
@@ -128,8 +128,8 @@
                         successMessage.textContent = 'Login successful!';
                         successMessage.style.display = 'block';
                         
-                        // Show blank page after short delay
-                        setTimeout(showBlankPage, 1000);
+                        // Redirect to dashboard after short delay
+                        setTimeout(redirectToDashboard, 1000);
                         
                         loginForm.reset();
                     } else {
@@ -144,9 +144,8 @@
                 });
             });
             
-            function showBlankPage() {
-                loginSection.style.display = 'none';
-                content.style.display = 'block';
+            function redirectToDashboard() {
+                window.location.href = 'admin-dashboard.html';
             }
         });
     </script>

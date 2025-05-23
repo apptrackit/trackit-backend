@@ -6,6 +6,8 @@ const adminController = require('../controllers/adminController');
 // Admin user lookup - changed from GET to POST
 router.post('/user', validateApiKey, adminController.getUserInfo);
 
+router.get('/getAllUserData', adminController.getAllUserData);
+
 // Get all emails endpoint
 router.get('/emails', validateApiKey, adminController.getAllEmails);
 

@@ -1,5 +1,16 @@
 const db = require('../database');
 
+exports.getAllUserData = (req, res) => {
+  db.all('SELECT * FROM users', [], (err, rows) => {
+    if (err) {
+      console.error('Error querying database:', err.message);
+      return res.status(500).json({ success: false, error: 'Database error' });
+    }
+    res.json({ success: true, users: rows });
+  });
+};
+
+
 // Get user info - updated to use request body instead of query parameters
 exports.getUserInfo = (req, res) => {
   const { username } = req.body;

@@ -1,0 +1,146 @@
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    line-height: 1.6;
+    color: #333;
+    margin: 0;
+    padding: 0;
+    background-color: #f5f5f5;
+}
+
+header {
+    background-color: #0066cc;
+    color: white;
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+h1, h2 {
+    margin: 0;
+}
+
+.header-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+#logout-btn {
+    background-color: #ff3b30;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+#logout-btn:hover {
+    background-color: #d9342b;
+}
+
+main {
+    padding: 2rem;
+}
+
+.data-container {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    padding: 1.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.scrollable-content {
+    max-height: 70vh;
+    overflow-y: auto;
+    margin-top: 1rem;
+    border: 1px solid #eee;
+    border-radius: 4px;
+}
+
+.loading {
+    padding: 2rem;
+    text-align: center;
+    color: #666;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    cursor: pointer;
+    user-select: none;
+}
+
+th:hover {
+    background-color: #e9ecef;
+}
+
+/* Sort indicators */
+th.sorted {
+    position: relative;
+    padding-right: 20px;
+}
+
+th.sorted::after {
+    content: '';
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+}
+
+th.sorted.asc::after {
+    border-bottom: 5px solid #333;
+    margin-top: -5px;
+}
+
+th.sorted.desc::after {
+    border-top: 5px solid #333;
+    margin-top: 0;
+}
+
+tr:hover {
+    background-color: #f8f9fa;
+}
+
+.error-message {
+    color: #ff3b30;
+    padding: 1rem;
+    text-align: center;
+    background-color: #ffeeee;
+    border-radius: 4px;
+}
+
+pre {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 4px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    font-family: monospace;
+}
+
+.json-key { color: #d63384; }
+.json-string { color: #198754; }
+.json-number { color: #fd7e14; }
+.json-boolean { color: #0d6efd; }
+.json-null { color: #6c757d; }
