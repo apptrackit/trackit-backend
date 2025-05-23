@@ -1,6 +1,14 @@
 const db = require('../database');
 
 exports.getAllUserData = (req, res) => {
+  // Only allow requests from localhost
+  const allowedHosts = ['127.0.0.1', '::1', 'localhost'];
+  const remoteAddress = req.connection.remoteAddress || req.socket.remoteAddress;
+
+  if (!allowedHosts.includes(remoteAddress)) {
+    return res.status(403).json({ success: false, error: 'Forbidden: Local access only' });
+  }
+
   db.all('SELECT * FROM users', [], (err, rows) => {
     if (err) {
       console.error('Error querying database:', err.message);
