@@ -4,7 +4,7 @@ const { validateApiKey, validateToken } = require('../auth');
 const authController = require('../controllers/authController');
 
 // Login endpoint
-router.post('/login', validateApiKey, authController.login);
+router.post('/login', authController.login);
 
 // Refresh token endpoint
 router.post('/refresh', validateApiKey, authController.refreshToken);
