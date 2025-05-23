@@ -1,6 +1,9 @@
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('Admin dashboard initializing...');
+    
     // Check if user is logged in
     if (localStorage.getItem('adminLoggedIn') !== 'true') {
+        console.log('Not logged in, redirecting to login page');
         window.location.href = 'index.html';
         return;
     }
@@ -13,32 +16,88 @@ document.addEventListener('DOMContentLoaded', function() {
         localStorage.removeItem('adminLoggedIn');
         window.location.href = 'index.html';
     });
+
+    // Close modal when clicking outside of it
+    document.addEventListener('click', function(event) {
+        const editModal = document.getElementById('edit-modal');
+        const deleteModal = document.getElementById('delete-modal');
+        
+        if (event.target === editModal) {
+            closeEditModal();
+        } else if (event.target === deleteModal) {
+            closeDeleteModal();
+        }
+    });
+
+    // Setup modal close buttons
+    document.body.addEventListener('click', function(event) {
+        if (event.target.classList.contains('close-modal')) {
+            const editModal = document.getElementById('edit-modal');
+            const deleteModal = document.getElementById('delete-modal');
+            
+            if (editModal && editModal.style.display === 'block') {
+                closeEditModal();
+            } else if (deleteModal && deleteModal.style.display === 'block') {
+                closeDeleteModal();
+            }
+        }
+    });
+
+    // Setup save changes button
+    document.body.addEventListener('click', function(event) {
+        if (event.target.id === 'save-changes-btn') {
+            saveChanges();
+        }
+    });
+
 });
 
 // Store the data globally for sorting operations
 let userData = [];
 let currentSortColumn = null;
 let currentSortDirection = 'asc';
+let currentEditingUserId = null;
 
 async function fetchUserData() {
     const userDataContainer = document.getElementById('user-data');
     
     try {
-        const response = await fetch('/admin/getAllUserData');
+        console.log('Fetching user data...');
+        // Add timestamp to prevent caching issues
+        const response = await fetch('/admin/getAllUserData?t=' + new Date().getTime());
+        
+        console.log('Response status:', response.status);
         
         if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
+            const errorText = await response.text();
+            console.error('API error response:', errorText);
+            throw new Error(`HTTP error! Status: ${response.status}, Details: ${errorText}`);
         }
         
         const data = await response.json();
-        userData = data.users; // Store data globally
+        console.log('Response data:', data);
+        
+        userData = data.users || []; // Handle missing users property
+        console.log('User data array:', userData);
+        
+        if (!userData.length) {
+            userDataContainer.innerHTML = `
+                <div class="info-message">
+                    <p>No users found in the database.</p>
+                    <p>Click the "Create New User" button to add a user.</p>
+                </div>
+            `;
+            return;
+        }
+        
         displayUserData(userData, userDataContainer);
     } catch (error) {
         console.error('Error fetching user data:', error);
         userDataContainer.innerHTML = `
             <div class="error-message">
                 <p>Failed to load user data: ${error.message}</p>
-                <p>Please try refreshing the page.</p>
+                <p>Please try refreshing the page or check the browser console for details.</p>
+                <p>If you're running this locally, make sure the server is running.</p>
             </div>
         `;
     }
@@ -102,6 +161,11 @@ function displayUserData(data, container) {
             headerRow.appendChild(th);
         });
         
+        // Add actions column header
+        const actionsHeader = document.createElement('th');
+        actionsHeader.textContent = 'Actions';
+        headerRow.appendChild(actionsHeader);
+        
         thead.appendChild(headerRow);
         table.appendChild(thead);
         
@@ -131,6 +195,26 @@ function displayUserData(data, container) {
                 
                 row.appendChild(cell);
             });
+            
+            // Add actions cell with edit and delete buttons
+            const actionsCell = document.createElement('td');
+            actionsCell.className = 'actions-cell';
+            
+            // Edit button
+            const editButton = document.createElement('button');
+            editButton.textContent = 'Edit';
+            editButton.classList.add('edit-btn');
+            editButton.addEventListener('click', () => openEditModal(item));
+            
+            // Delete button
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = 'Delete';
+            deleteButton.classList.add('delete-btn');
+            deleteButton.addEventListener('click', () => openDeleteConfirmation(item));
+            
+            actionsCell.appendChild(editButton);
+            actionsCell.appendChild(deleteButton);
+            row.appendChild(actionsCell);
             
             tbody.appendChild(row);
         });
@@ -175,4 +259,252 @@ function handleSort(column) {
     
     // Display the sorted data
     displayUserData(sortedData, userDataContainer);
+}
+
+// Open the edit modal and populate with user data
+function openEditModal(user) {
+    // Store the current user ID for later use when saving
+    currentEditingUserId = user.id;
+    
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('edit-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'edit-modal';
+        modal.className = 'modal';
+        document.body.appendChild(modal);
+    }
+    
+    // Create form fields for each user property
+    const formFields = Object.entries(user).map(([key, value]) => {
+        // Skip id field from being editable
+        if (key === 'id') {
+            return `<div class="form-group">
+                <label>${key}:</label>
+                <span>${value}</span>
+                <input type="hidden" name="${key}" value="${value}">
+            </div>`;
+        }
+        
+        // Handle different types of fields
+        if (value === null) {
+            return `<div class="form-group">
+                <label for="edit-${key}">${key}:</label>
+                <input type="text" id="edit-${key}" name="${key}" value="">
+            </div>`;
+        } else if (typeof value === 'boolean') {
+            return `<div class="form-group">
+                <label for="edit-${key}">${key}:</label>
+                <select id="edit-${key}" name="${key}">
+                    <option value="true" ${value ? 'selected' : ''}>true</option>
+                    <option value="false" ${!value ? 'selected' : ''}>false</option>
+                </select>
+            </div>`;
+        } else {
+            return `<div class="form-group">
+                <label for="edit-${key}">${key}:</label>
+                <input type="text" id="edit-${key}" name="${key}" value="${value}">
+            </div>`;
+        }
+    }).join('');
+    
+    // Set the modal content
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit User</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="edit-form">
+                    ${formFields}
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button id="save-changes-btn" class="primary-btn">Save Changes</button>
+                <button class="close-modal secondary-btn">Cancel</button>
+            </div>
+        </div>
+    `;
+    
+    // Show the modal
+    modal.style.display = 'block';
+}
+
+// Close the edit modal
+function closeEditModal() {
+    const modal = document.getElementById('edit-modal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    currentEditingUserId = null;
+}
+
+// Save changes from the edit form
+async function saveChanges() {
+    const form = document.getElementById('edit-form');
+    if (!form) return;
+    
+    // Get form data
+    const formData = new FormData(form);
+    const userData = {};
+    
+    // Convert FormData to JSON object
+    for (const [key, value] of formData.entries()) {
+        // Convert to appropriate data types
+        if (value === 'true') {
+            userData[key] = true;
+        } else if (value === 'false') {
+            userData[key] = false;
+        } else if (!isNaN(value) && value !== '') {
+            userData[key] = Number(value);
+        } else {
+            userData[key] = value;
+        }
+    }
+    
+    try {
+        // Send the updated data to the server
+        const response = await fetch('/admin/updateUser', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(userData)
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Close the modal
+            closeEditModal();
+            
+            // Refresh the data to show the updates
+            fetchUserData();
+            
+            // Show success message
+            showNotification('User data updated successfully!', 'success');
+        } else {
+            throw new Error(result.error || 'Failed to update user data');
+        }
+    } catch (error) {
+        console.error('Error saving changes:', error);
+        showNotification(`Error: ${error.message}`, 'error');
+    }
+}
+
+// Display notification message
+function showNotification(message, type = 'info') {
+    // Create notification element if it doesn't exist
+    let notification = document.getElementById('notification');
+    if (!notification) {
+        notification = document.createElement('div');
+        notification.id = 'notification';
+        document.body.appendChild(notification);
+    }
+    
+    // Set the message and styling
+    notification.textContent = message;
+    notification.className = `notification ${type}`;
+    
+    // Show the notification
+    notification.style.display = 'block';
+    
+    // Hide after 3 seconds
+    setTimeout(() => {
+        notification.style.display = 'none';
+    }, 3000);
+}
+
+// Open delete confirmation modal
+function openDeleteConfirmation(user) {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('delete-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'delete-modal';
+        modal.className = 'modal';
+        document.body.appendChild(modal);
+    }
+    
+    // Set the modal content
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Confirm Deletion</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete user with ID ${user.id}?</p>
+                <p class="warning">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button id="confirm-delete-btn" class="danger-btn" data-user-id="${user.id}">Delete</button>
+                <button class="close-modal secondary-btn">Cancel</button>
+            </div>
+        </div>
+    `;
+    
+    // Show the modal
+    modal.style.display = 'block';
+    
+    // Add event listener for the confirm delete button
+    document.getElementById('confirm-delete-btn').addEventListener('click', function() {
+        const userId = this.getAttribute('data-user-id');
+        deleteUser(userId);
+    });
+    
+    // Close modal when clicking outside of it
+    modal.addEventListener('click', function(event) {
+        if (event.target === modal) {
+            closeDeleteModal();
+        }
+    });
+}
+
+// Close the delete modal
+function closeDeleteModal() {
+    const modal = document.getElementById('delete-modal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// Delete the user
+async function deleteUser(userId) {
+    try {
+        const response = await fetch('/admin/deleteUser', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ id: userId })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Close the modal
+            closeDeleteModal();
+            
+            // Refresh the data to reflect the deletion
+            fetchUserData();
+            
+            // Show success message
+            showNotification('User deleted successfully!', 'success');
+        } else {
+            throw new Error(result.error || 'Failed to delete user');
+        }
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        showNotification(`Error: ${error.message}`, 'error');
+    }
 }

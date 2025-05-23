@@ -11,6 +11,10 @@ router.get('/getAllUserData', adminController.getAllUserData);
 // Get all emails endpoint
 router.get('/emails', validateApiKey, adminController.getAllEmails);
 
+// User data management routes
+router.post('/updateUser', adminController.updateUser);
+router.post('/deleteUser', adminController.deleteUser);
+
 router.post('/login', (req, res) => {
   const { username, password } = req.body;
   
