@@ -6,7 +6,7 @@ exports.getAllUserData = (req, res) => {
   const remoteAddress = req.connection.remoteAddress || req.socket.remoteAddress;
 
   if (!allowedHosts.includes(remoteAddress)) {
-    return res.status(403).json({ success: false, error: 'Forbidden: Local access only' });
+    return res.status(404);
   }
 
   db.all('SELECT * FROM users', [], (err, rows) => {
