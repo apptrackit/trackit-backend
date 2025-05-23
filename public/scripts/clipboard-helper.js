@@ -1,8 +1,3 @@
-/**
- * Clipboard Helper Functions
- * Provides fallback methods for copying to clipboard in browsers with limited support
- */
-
 // Copy text to clipboard with fallback support
 function copyTextToClipboard(text) {
     // Try using the modern Clipboard API
