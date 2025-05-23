@@ -42,6 +42,10 @@ JWT_SECRET=your_jwt_secret_key
 - `HOST`: Hostname for the server
 - `JWT_SECRET`: Secret key for signing JWT tokens (should be a long, random string)
 
+**Admin Credentials (for initial setup)**:
+- Username: `admin`
+- Password: `adminpassword`
+
 ## Project Structure
 
 The application follows a modular structure:
