@@ -32,6 +32,7 @@ API_KEY=your_secret_api_key
 PORT=3000
 SALT=10
 HOST=localhost
+JWT_SECRET=your_jwt_secret_key
 ```
 
 - `DB_PATH`: Path to your SQLite database file
@@ -39,6 +40,11 @@ HOST=localhost
 - `PORT`: Port on which the server will run
 - `SALT`: Number of salt rounds for password hashing (recommended: 10)
 - `HOST`: Hostname for the server
+- `JWT_SECRET`: Secret key for signing JWT tokens (should be a long, random string)
+
+**Admin Credentials (for initial setup)**:
+- Username: `admin`
+- Password: `adminpassword`
 
 ## Project Structure
 
@@ -91,6 +97,9 @@ All endpoints require authentication via an API key. You can provide it in two w
 1. As a header: `x-api-key: your_api_key`
 2. As a query parameter: `?apiKey=your_api_key`
 
+For authenticated user endpoints, you also need to provide a JWT token in the Authorization header:
+`Authorization: Bearer your_jwt_token`
+
 ## API Endpoints
 
 ### Authentication
@@ -111,7 +120,56 @@ All endpoints require authentication via an API key. You can provide it in two w
   {
     "success": true,
     "authenticated": true,
-    "message": "Authentication successful"
+    "message": "Authentication successful",
+    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+    "refreshToken": "a1b2c3d4e5f6...",
+    "user": {
+      "id": 1,
+      "username": "johndoe",
+      "email": "john@example.com"
+    }
+  }
+  ```
+
+#### Check Session Status
+
+- **URL**: `/auth/check`
+- **Method**: GET
+- **Headers**: 
+  - `Authorization: Bearer your_jwt_token`
+- **Success Response**: 
+  ```json
+  {
+    "success": true,
+    "isAuthenticated": true,
+    "message": "Session is valid",
+    "user": {
+      "id": 1,
+      "username": "johndoe",
+      "email": "john@example.com"
+    }
+  }
+  ```
+- **Expired/Invalid Session Response**:
+  ```json
+  {
+    "success": false,
+    "isAuthenticated": false,
+    "message": "Session expired or invalid"
+  }
+  ```
+
+#### Logout
+
+- **URL**: `/auth/logout`
+- **Method**: POST
+- **Headers**: 
+  - `Authorization: Bearer your_jwt_token`
+- **Success Response**: 
+  ```json
+  {
+    "success": true,
+    "message": "Logged out successfully"
   }
   ```
 
@@ -250,7 +308,125 @@ All endpoints require authentication via an API key. You can provide it in two w
   }
   ```
 
+## Session Management
 
+The API uses JWT (JSON Web Tokens) with a self-refreshing token system for session management. Here's how it works:
+
+1. When a user logs in, they receive:
+   - Access token (valid for 7 days)
+   - Refresh token (valid for 365 days)
+2. For all authenticated requests, include the access token in the Authorization header
+3. When the access token expires:
+   - Use the refresh token to get new tokens
+   - Both access token and refresh token are refreshed
+   - New access token is valid for 7 days
+   - New refresh token is valid for 365 days
+   - User stays logged in without needing to re-enter credentials
+4. The session is invalidated when:
+   - The user logs out
+   - The tokens are invalid or tampered with
+   - The session is explicitly revoked
+
+### Authentication Flow
+
+1. **Login**:
+- **URL**: `/auth/login`
+- **Method**: POST
+- **Body**:
+  ```json
+  {
+    "username": "johndoe",
+    "password": "securepassword"
+  }
+  ```
+- **Success Response**: 
+  ```json
+  {
+    "success": true,
+    "authenticated": true,
+    "message": "Authentication successful",
+    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+    "refreshToken": "a1b2c3d4e5f6...",
+    "user": {
+      "id": 1,
+      "username": "johndoe",
+      "email": "john@example.com"
+    }
+  }
+  ```
+
+2. **Refresh Tokens**:
+- **URL**: `/auth/refresh`
+- **Method**: POST
+- **Body**:
+  ```json
+  {
+    "refreshToken": "your_refresh_token"
+  }
+  ```
+- **Success Response**: 
+  ```json
+  {
+    "success": true,
+    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+    "refreshToken": "new_refresh_token..."
+  }
+  ```
+
+3. **Making Authenticated Requests**:
+- **Headers Required**:
+  - `x-api-key: your_api_key`
+  - `Authorization: Bearer your_access_token`
+
+4. **Check Session Status**:
+- **URL**: `/auth/check`
+- **Method**: GET
+- **Headers**: 
+  - `x-api-key: your_api_key`
+  - `Authorization: Bearer your_access_token`
+- **Success Response**: 
+  ```json
+  {
+    "success": true,
+    "isAuthenticated": true,
+    "message": "Session is valid",
+    "user": {
+      "id": 1,
+      "username": "johndoe",
+      "email": "john@example.com"
+    }
+  }
+  ```
+
+5. **Logout**:
+- **URL**: `/auth/logout`
+- **Method**: POST
+- **Headers**: 
+  - `x-api-key: your_api_key`
+  - `Authorization: Bearer your_access_token`
+- **Success Response**: 
+  ```json
+  {
+    "success": true,
+    "message": "Logged out successfully"
+  }
+  ```
+
+### Client Implementation
+
+For the best user experience, implement the following in your client application:
+
+1. Store both tokens securely (e.g., in secure storage or encrypted cookies)
+2. Use the access token for all API requests
+3. When you get a 401 error (expired token):
+   - Use the refresh token to get a new access token
+   - Retry the original request with the new access token
+4. If the refresh token request fails:
+   - Redirect to login screen
+5. On logout:
+   - Call the logout endpoint
+   - Clear stored tokens
+   - Redirect to login screen
 
 ## Replit
 - pull updates `git pull origin main`

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - User Data</title>
+    <link rel="stylesheet" href="css/admin-dashboard.css">
+</head>
+<body>
+    <header>
+        <h1>Admin Dashboard</h1>
+        <div class="header-actions">
+            <button id="logout-btn">Logout</button>
+        </div>
+    </header>
+    
+    <main>
+        <div class="data-container">
+            <h2>User Data</h2>
+            <div id="user-data" class="scrollable-content">
+                <div class="loading">Loading user data...</div>
+            </div>
+        </div>
+    </main>
+
+    <script src="scripts/clipboard-helper.js"></script>
+    <script src="scripts/admin-dashboard.js"></script>
+</body>
+</html>
