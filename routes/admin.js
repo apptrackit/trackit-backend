@@ -9,11 +9,9 @@ router.post('/user', validateApiKey, adminController.getUserInfo);
 // Get all emails endpoint
 router.get('/emails', validateApiKey, adminController.getAllEmails);
 
-// Admin login endpoint - simplified without tokens
 router.post('/login', (req, res) => {
   const { username, password } = req.body;
   
-  // Check if the credentials match the admin credentials from .env
   if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
     res.json({
       success: true,
@@ -28,7 +26,6 @@ router.post('/login', (req, res) => {
   }
 });
 
-// Check admin credentials - simplified
 router.post('/check', (req, res) => {
   const { username, password } = req.body;
   
