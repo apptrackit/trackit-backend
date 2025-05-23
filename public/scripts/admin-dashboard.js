@@ -182,8 +182,57 @@ function displayUserData(data, container) {
                 if (key in item) {
                     const value = item[key];
                     
+                    // Check if this is a password hash field and mask it with asterisks
+                    const isPasswordField = key === 'password' || 
+                                           key === 'passwordHash' || 
+                                           key === 'password_hash';
+                    
                     if (value === null) {
                         cell.textContent = 'null';
+                    } else if (isPasswordField && value) {
+                        // Create a wrapper for the password hash field
+                        const passwordWrapper = document.createElement('div');
+                        passwordWrapper.className = 'password-wrapper';
+                        
+                        // Create the masked password display
+                        const maskedPassword = document.createElement('div');
+                        maskedPassword.className = 'masked-password';
+                        maskedPassword.textContent = value.substring(0, 3) + '**********';
+                        maskedPassword.title = "Hover to view full hash, click to copy";
+                        maskedPassword.dataset.fullHash = value;
+                        
+                        // Create the tooltip element
+                        const tooltip = document.createElement('div');
+                        tooltip.className = 'hash-tooltip';
+                        tooltip.textContent = value;
+                        
+                        // Add click handler to copy the hash
+                        maskedPassword.addEventListener('click', function() {
+                            const hash = this.dataset.fullHash;
+                            copyTextToClipboard(hash)
+                                .then(() => {
+                                    // Show copy confirmation
+                                    const copyConfirm = document.createElement('div');
+                                    copyConfirm.className = 'copy-confirm';
+                                    copyConfirm.textContent = 'Copied!';
+                                    this.appendChild(copyConfirm);
+                                    
+                                    // Remove confirmation after animation
+                                    setTimeout(() => {
+                                        if (copyConfirm.parentNode === this) {
+                                            this.removeChild(copyConfirm);
+                                        }
+                                    }, 1500);
+                                })
+                                .catch(err => {
+                                    console.error('Failed to copy:', err);
+                                });
+                        });
+                        
+                        // Assemble the components
+                        passwordWrapper.appendChild(maskedPassword);
+                        passwordWrapper.appendChild(tooltip);
+                        cell.appendChild(passwordWrapper);
                     } else if (typeof value === 'object') {
                         cell.textContent = JSON.stringify(value);
                     } else {
@@ -286,6 +335,11 @@ function openEditModal(user) {
             </div>`;
         }
         
+        // Handle password fields specially
+        const isPasswordField = key === 'password' || 
+                               key === 'passwordHash' || 
+                               key === 'password_hash';
+        
         // Handle different types of fields
         if (value === null) {
             return `<div class="form-group">
@@ -299,6 +353,13 @@ function openEditModal(user) {
                     <option value="true" ${value ? 'selected' : ''}>true</option>
                     <option value="false" ${!value ? 'selected' : ''}>false</option>
                 </select>
+            </div>`;
+        } else if (isPasswordField) {
+            return `<div class="form-group">
+                <label for="edit-${key}">${key}:</label>
+                <input type="${isPasswordField ? 'password' : 'text'}" id="edit-${key}" name="${key}" 
+                       value="${value}" placeholder="${isPasswordField ? 'Enter new password to change' : ''}">
+                ${isPasswordField ? '<span class="field-info">Leave empty to keep current password</span>' : ''}
             </div>`;
         } else {
             return `<div class="form-group">

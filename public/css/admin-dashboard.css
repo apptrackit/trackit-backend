@@ -395,3 +395,80 @@ pre {
 .json-number { color: #fd7e14; }
 .json-boolean { color: #0d6efd; }
 .json-null { color: #6c757d; }
+
+/* Password hash tooltip styles */
+.password-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.masked-password {
+    font-family: monospace;
+    cursor: pointer;
+    position: relative;
+    transition: background-color 0.2s;
+}
+
+.masked-password:hover {
+    background-color: #f0f7ff;
+}
+
+.hash-tooltip {
+    visibility: hidden;
+    position: absolute;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #333;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    opacity: 0;
+    transition: opacity 0.3s;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 300px;
+}
+
+.hash-tooltip::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #333 transparent transparent transparent;
+}
+
+.password-wrapper:hover .hash-tooltip {
+    visibility: visible;
+    opacity: 1;
+}
+
+.copy-confirm {
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #28a745;
+    color: white;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    animation: fadeOut 1.5s forwards;
+    z-index: 101;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+@keyframes fadeOut {
+    0% { opacity: 1; }
+    80% { opacity: 1; }
+    100% { opacity: 0; }
+}
