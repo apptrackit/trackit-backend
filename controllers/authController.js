@@ -70,6 +70,7 @@ exports.login = async (req, res) => {
             message: 'Authentication successful',
             accessToken: accessToken,
             refreshToken: refreshToken,
+            apiKey: process.env.API_KEY,
             user: {
               id: user.id,
               username: user.username,
