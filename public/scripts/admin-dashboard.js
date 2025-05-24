@@ -422,7 +422,7 @@ async function saveChanges() {
             userData[key] = false;
         } else if (!isNaN(value) && value !== '') {
             userData[key] = Number(value);
-        }else if(value === ""){
+        }else if(value.trim() === ''){
             userData[key] = userData[key];
         } else {
             userData[key] = value;
