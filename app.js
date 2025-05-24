@@ -28,4 +28,6 @@ app.use('/admin', adminRoutes);
 app.listen(process.env.PORT, process.env.HOST, () => {
   console.log(`Server running on http://${process.env.HOST}:${process.env.PORT}`);
 });
+
+
 //test
