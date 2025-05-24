@@ -3,17 +3,16 @@ const router = express.Router();
 const { validateApiKey } = require('../auth');
 const adminController = require('../controllers/adminController');
 
-// Admin user lookup - changed from GET to POST
 router.post('/user', validateApiKey, adminController.getUserInfo);
 
-router.get('/getAllUserData', adminController.getAllUserData);
+router.get('/getAllUserData',validateApiKey, adminController.getAllUserData);
 
 // Get all emails endpoint
 router.get('/emails', validateApiKey, adminController.getAllEmails);
 
 // User data management routes
-router.post('/updateUser', adminController.updateUser);
-router.post('/deleteUser', adminController.deleteUser);
+router.post('/updateUser',validateApiKey, adminController.updateUser);
+router.post('/deleteUser',validateApiKey, adminController.deleteUser);
 
 router.post('/login', (req, res) => {
   const { username, password } = req.body;
@@ -21,6 +20,7 @@ router.post('/login', (req, res) => {
   if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
     res.json({
       success: true,
+      token: process.env.API_KEY,
       username: username,
       message: 'Admin login successful'
     });
