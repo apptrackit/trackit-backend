@@ -79,6 +79,21 @@ CREATE TABLE users (
   email TEXT NOT NULL,
   password TEXT NOT NULL
 );
+
+CREATE TABLE sessions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  device_id TEXT NOT NULL,
+  access_token TEXT NOT NULL,
+  refresh_token TEXT NOT NULL,
+  access_token_expires_at TEXT NOT NULL,
+  refresh_token_expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  last_refresh_at TEXT,
+  refresh_count INTEGER DEFAULT 0,
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  UNIQUE(user_id, device_id)
+);
 ```
 
 ## Running the Server
@@ -326,7 +341,11 @@ The API uses JWT (JSON Web Tokens) with a self-refreshing token system for sessi
 1. When a user logs in, they receive:
    - Access token (valid for 7 days)
    - Refresh token (valid for 365 days)
-2. For all authenticated requests, include the access token in the Authorization header
+   - Device ID (unique identifier for the login device)
+   - API key
+2. For all authenticated requests, include:
+   - Access token in the Authorization header
+   - API key in the x-api-key header
 3. When the access token expires:
    - Use the refresh token to get new tokens
    - Both access token and refresh token are refreshed
@@ -334,9 +353,18 @@ The API uses JWT (JSON Web Tokens) with a self-refreshing token system for sessi
    - New refresh token is valid for 365 days
    - User stays logged in without needing to re-enter credentials
 4. The session is invalidated when:
-   - The user logs out
+   - The user logs out from the specific device
+   - The user logs out from all devices
    - The tokens are invalid or tampered with
    - The session is explicitly revoked
+
+### Session Limits and Device Management
+
+- Maximum of 5 concurrent sessions per user
+- Each device gets a unique device ID based on user agent and IP
+- Users can view all their active sessions
+- Users can logout from specific devices or all devices at once
+- Sessions are tracked with creation time and last refresh time
 
 ### Authentication Flow
 
@@ -359,6 +387,7 @@ The API uses JWT (JSON Web Tokens) with a self-refreshing token system for sessi
     "accessToken": "eyJhbGciOiJIUzI1NiIs...",
     "refreshToken": "a1b2c3d4e5f6...",
     "apiKey": "your_api_key_here",
+    "deviceId": "unique_device_id",
     "user": {
       "id": 1,
       "username": "johndoe",
@@ -387,6 +416,7 @@ The API uses JWT (JSON Web Tokens) with a self-refreshing token system for sessi
     "accessToken": "eyJhbGciOiJIUzI1NiIs...",
     "refreshToken": "a1b2c3d4e5f6...",
     "apiKey": "your_api_key_here",
+    "deviceId": "unique_device_id",
     "user": {
       "id": 1,
       "username": "johndoe",
@@ -401,7 +431,8 @@ The API uses JWT (JSON Web Tokens) with a self-refreshing token system for sessi
 - **Body**:
   ```json
   {
-    "refreshToken": "your_refresh_token"
+    "refreshToken": "your_refresh_token",
+    "deviceId": "your_device_id"
   }
   ```
 - **Success Response**: 
@@ -409,16 +440,77 @@ The API uses JWT (JSON Web Tokens) with a self-refreshing token system for sessi
   {
     "success": true,
     "accessToken": "eyJhbGciOiJIUzI1NiIs...",
-    "refreshToken": "new_refresh_token..."
+    "refreshToken": "new_refresh_token...",
+    "deviceId": "your_device_id"
   }
   ```
 
-4. **Making Authenticated Requests**:
-- **Headers Required**:
+4. **Logout from Device**:
+- **URL**: `/auth/logout`
+- **Method**: POST
+- **Headers**: 
   - `x-api-key: your_api_key`
   - `Authorization: Bearer your_access_token`
+- **Body**:
+  ```json
+  {
+    "deviceId": "your_device_id"
+  }
+  ```
+- **Success Response**: 
+  ```json
+  {
+    "success": true,
+    "message": "Logged out successfully"
+  }
+  ```
 
-5. **Check Session Status**:
+5. **Logout from All Devices**:
+- **URL**: `/auth/logout-all`
+- **Method**: POST
+- **Headers**: 
+  - `x-api-key: your_api_key`
+  - `Authorization: Bearer your_access_token`
+- **Success Response**: 
+  ```json
+  {
+    "success": true,
+    "message": "Logged out from all devices successfully"
+  }
+  ```
+
+6. **List Active Sessions**:
+- **URL**: `/auth/sessions`
+- **Method**: GET
+- **Headers**: 
+  - `x-api-key: your_api_key`
+  - `Authorization: Bearer your_access_token`
+- **Success Response**: 
+  ```json
+  {
+    "success": true,
+    "sessions": [
+      {
+        "id": 1,
+        "device_id": "device1",
+        "created_at": "2024-03-20T10:00:00Z",
+        "last_refresh_at": "2024-03-20T15:00:00Z",
+        "refresh_count": 2,
+        "isCurrentDevice": true
+      },
+      {
+        "id": 2,
+        "device_id": "device2",
+        "created_at": "2024-03-19T10:00:00Z",
+        "last_refresh_at": "2024-03-19T15:00:00Z",
+        "refresh_count": 1,
+        "isCurrentDevice": false
+      }
+    ]
+  }
+  ```
+
+7. **Check Session Status**:
 - **URL**: `/auth/check`
 - **Method**: GET
 - **Headers**: 
@@ -430,6 +522,7 @@ The API uses JWT (JSON Web Tokens) with a self-refreshing token system for sessi
     "success": true,
     "isAuthenticated": true,
     "message": "Session is valid",
+    "deviceId": "your_device_id",
     "user": {
       "id": 1,
       "username": "johndoe",
@@ -438,35 +531,32 @@ The API uses JWT (JSON Web Tokens) with a self-refreshing token system for sessi
   }
   ```
 
-6. **Logout**:
-- **URL**: `/auth/logout`
-- **Method**: POST
-- **Headers**: 
-  - `x-api-key: your_api_key`
-  - `Authorization: Bearer your_access_token`
-- **Success Response**: 
-  ```json
-  {
-    "success": true,
-    "message": "Logged out successfully"
-  }
-  ```
-
 ### Client Implementation
 
 For the best user experience, implement the following in your client application:
 
-1. Store both tokens securely (e.g., in secure storage or encrypted cookies)
+1. Store securely:
+   - Access token
+   - Refresh token
+   - Device ID
+   - API key
 2. Use the access token for all API requests
 3. When you get a 401 error (expired token):
-   - Use the refresh token to get a new access token
+   - Use the refresh token and device ID to get new tokens
    - Retry the original request with the new access token
 4. If the refresh token request fails:
    - Redirect to login screen
 5. On logout:
-   - Call the logout endpoint
+   - Call the logout endpoint with the device ID
    - Clear stored tokens
    - Redirect to login screen
+6. Implement session management UI:
+   - Show list of active sessions
+   - Allow logout from specific devices
+   - Allow logout from all devices
+7. Handle maximum session limit:
+   - Show error when trying to login with 5 active sessions
+   - Provide option to logout from other devices
 
 ## Replit
 - pull updates `git pull origin main`
