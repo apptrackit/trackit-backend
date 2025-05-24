@@ -198,6 +198,7 @@ For authenticated user endpoints, you also need to provide a JWT token in the Au
     "message": "Authentication successful",
     "accessToken": "eyJhbGciOiJIUzI1NiIs...",
     "refreshToken": "a1b2c3d4e5f6...",
+    "apiKey": "your_api_key_here",
     "user": {
       "id": 1,
       "username": "johndoe",
@@ -266,7 +267,16 @@ For authenticated user endpoints, you also need to provide a JWT token in the Au
   ```json
   {
     "success": true,
-    "id": 1
+    "authenticated": true,
+    "message": "Registration successful",
+    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+    "refreshToken": "a1b2c3d4e5f6...",
+    "apiKey": "your_api_key_here",
+    "user": {
+      "id": 1,
+      "username": "johndoe",
+      "email": "john@example.com"
+    }
   }
   ```
 
@@ -422,6 +432,7 @@ The API uses JWT (JSON Web Tokens) with a self-refreshing token system for sessi
     "message": "Authentication successful",
     "accessToken": "eyJhbGciOiJIUzI1NiIs...",
     "refreshToken": "a1b2c3d4e5f6...",
+    "apiKey": "your_api_key_here",
     "user": {
       "id": 1,
       "username": "johndoe",
@@ -430,7 +441,35 @@ The API uses JWT (JSON Web Tokens) with a self-refreshing token system for sessi
   }
   ```
 
-2. **Refresh Tokens**:
+2. **Register**:
+- **URL**: `/user/register`
+- **Method**: POST
+- **Body**:
+  ```json
+  {
+    "username": "johndoe",
+    "email": "john@example.com",
+    "password": "securepassword"
+  }
+  ```
+- **Success Response**: 
+  ```json
+  {
+    "success": true,
+    "authenticated": true,
+    "message": "Registration successful",
+    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+    "refreshToken": "a1b2c3d4e5f6...",
+    "apiKey": "your_api_key_here",
+    "user": {
+      "id": 1,
+      "username": "johndoe",
+      "email": "john@example.com"
+    }
+  }
+  ```
+
+3. **Refresh Tokens**:
 - **URL**: `/auth/refresh`
 - **Method**: POST
 - **Body**:
@@ -448,12 +487,12 @@ The API uses JWT (JSON Web Tokens) with a self-refreshing token system for sessi
   }
   ```
 
-3. **Making Authenticated Requests**:
+4. **Making Authenticated Requests**:
 - **Headers Required**:
   - `x-api-key: your_api_key`
   - `Authorization: Bearer your_access_token`
 
-4. **Check Session Status**:
+5. **Check Session Status**:
 - **URL**: `/auth/check`
 - **Method**: GET
 - **Headers**: 
@@ -473,7 +512,7 @@ The API uses JWT (JSON Web Tokens) with a self-refreshing token system for sessi
   }
   ```
 
-5. **Logout**:
+6. **Logout**:
 - **URL**: `/auth/logout`
 - **Method**: POST
 - **Headers**: 
