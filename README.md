@@ -116,6 +116,13 @@ All endpoints require authentication via an API key. You can provide it in two w
 For authenticated user endpoints, you also need to provide a JWT token in the Authorization header:
 `Authorization: Bearer your_jwt_token`
 
+The JWT token contains the following information:
+- `userId`: The ID of the authenticated user
+- `username`: The username of the authenticated user
+- `deviceId`: A unique identifier for the device/browser
+- `iat`: Token issued at timestamp
+- `exp`: Token expiration timestamp
+
 ## API Endpoints
 
 ### Authentication
@@ -140,6 +147,7 @@ For authenticated user endpoints, you also need to provide a JWT token in the Au
     "accessToken": "eyJhbGciOiJIUzI1NiIs...",
     "refreshToken": "a1b2c3d4e5f6...",
     "apiKey": "your_api_key_here",
+    "deviceId": "unique_device_id",
     "user": {
       "id": 1,
       "username": "johndoe",
@@ -336,35 +344,36 @@ For authenticated user endpoints, you also need to provide a JWT token in the Au
 
 ## Session Management
 
-The API uses JWT (JSON Web Tokens) with a self-refreshing token system for session management. Here's how it works:
+The system uses a combination of access tokens and refresh tokens for session management:
 
-1. When a user logs in, they receive:
-   - Access token (valid for 7 days)
-   - Refresh token (valid for 365 days)
-   - Device ID (unique identifier for the login device)
-   - API key
-2. For all authenticated requests, include:
-   - Access token in the Authorization header
-   - API key in the x-api-key header
-3. When the access token expires:
-   - Use the refresh token to get new tokens
-   - Both access token and refresh token are refreshed
-   - New access token is valid for 7 days
-   - New refresh token is valid for 365 days
-   - User stays logged in without needing to re-enter credentials
-4. The session is invalidated when:
-   - The user logs out from the specific device
-   - The user logs out from all devices
-   - The tokens are invalid or tampered with
-   - The session is explicitly revoked
+1. **Access Token**:
+   - Short-lived (7 days)
+   - Used for API authentication
+   - Contains user and device information
+   - Stored in the database with expiration time
 
-### Session Limits and Device Management
+2. **Refresh Token**:
+   - Long-lived (365 days)
+   - Used to obtain new access tokens
+   - Stored in the database with expiration time
 
-- Maximum of 5 concurrent sessions per user
-- Each device gets a unique device ID based on user agent and IP
-- Users can view all their active sessions
-- Users can logout from specific devices or all devices at once
-- Sessions are tracked with creation time and last refresh time
+3. **Device Management**:
+   - Each login creates a unique device ID based on user agent and IP
+   - Maximum of 5 concurrent sessions per user
+   - Sessions are tracked per device
+   - Users can view and manage their active sessions
+
+4. **Session Storage**:
+   - Sessions are stored in the database with:
+     - User ID
+     - Device ID
+     - Access token
+     - Refresh token
+     - Access token expiration
+     - Refresh token expiration
+     - Creation timestamp
+     - Last refresh timestamp
+     - Refresh count
 
 ### Authentication Flow
 
@@ -481,10 +490,16 @@ The API uses JWT (JSON Web Tokens) with a self-refreshing token system for sessi
 
 6. **List Active Sessions**:
 - **URL**: `/auth/sessions`
-- **Method**: GET
+- **Method**: POST
 - **Headers**: 
   - `x-api-key: your_api_key`
-  - `Authorization: Bearer your_access_token`
+- **Body**:
+  ```json
+  {
+    "userId": 123
+  }
+  ```
+- **Description**: Lists all active sessions for a specific user. Only requires the API key and the user ID in the request body. This endpoint is useful for administrators or for viewing all sessions associated with a user account.
 - **Success Response**: 
   ```json
   {
@@ -492,19 +507,10 @@ The API uses JWT (JSON Web Tokens) with a self-refreshing token system for sessi
     "sessions": [
       {
         "id": 1,
-        "device_id": "device1",
+        "device_id": "unique_device_id",
         "created_at": "2024-03-20T10:00:00Z",
         "last_refresh_at": "2024-03-20T15:00:00Z",
-        "refresh_count": 2,
-        "isCurrentDevice": true
-      },
-      {
-        "id": 2,
-        "device_id": "device2",
-        "created_at": "2024-03-19T10:00:00Z",
-        "last_refresh_at": "2024-03-19T15:00:00Z",
-        "refresh_count": 1,
-        "isCurrentDevice": false
+        "refresh_count": 2
       }
     ]
   }
@@ -540,23 +546,25 @@ For the best user experience, implement the following in your client application
    - Refresh token
    - Device ID
    - API key
+
 2. Use the access token for all API requests
+
 3. When you get a 401 error (expired token):
    - Use the refresh token and device ID to get new tokens
    - Retry the original request with the new access token
+
 4. If the refresh token request fails:
    - Redirect to login screen
+
 5. On logout:
    - Call the logout endpoint with the device ID
    - Clear stored tokens
    - Redirect to login screen
-6. Implement session management UI:
-   - Show list of active sessions
-   - Allow logout from specific devices
-   - Allow logout from all devices
-7. Handle maximum session limit:
-   - Show error when trying to login with 5 active sessions
-   - Provide option to logout from other devices
+
+6. Session Management:
+   - Track the current device ID
+   - Use it to identify the current session in the sessions list
+   - Implement session management UI to view and control active sessions
 
 ## Replit
 - pull updates `git pull origin main`

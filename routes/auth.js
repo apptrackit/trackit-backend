@@ -16,7 +16,7 @@ router.post('/logout', validateApiKey, validateToken, authController.logout);
 router.post('/logout-all', validateApiKey, validateToken, authController.logoutAll);
 
 // List active sessions endpoint
-router.get('/sessions', validateApiKey, validateToken, authController.listSessions);
+router.post('/sessions', validateApiKey, authController.listSessions);
 
 // Check session status
 router.get('/check', validateApiKey, authController.checkSession);
