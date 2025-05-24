@@ -12,7 +12,7 @@ A REST API for user management with authentication.
 
 1. Clone the repository:
 ```
-git clone <repository-url>
+git clone https://github.com/apptrackit/trackit-backend
 cd trackit_backend
 ```
 
@@ -41,85 +41,11 @@ HOST=localhost
 # Security Settings
 SALT=10  # Number of salt rounds for password hashing
 
-# Admin Account (for initial setup)
+# Admin Account
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=admin
 ```
 
-### Environment Variables Explained
-
-- **Database Configuration**:
-  - `DB_PATH`: Path to your SQLite database file
-    - Example: `/Users/username/project/database.db`
-    - Make sure the directory exists and is writable
-
-- **API Security**:
-  - `API_KEY`: Secret key for API authentication
-    - Should be a long, random string
-    - Used to protect all API endpoints
-    - Example: `a1b2c3d4e5f6g7h8i9j0...`
-  - `JWT_SECRET`: Secret key for signing JWT tokens
-    - Should be a long, random string
-    - Used to sign and verify authentication tokens
-    - Example: `x1y2z3a4b5c6d7e8f9g0...`
-
-- **Server Configuration**:
-  - `PORT`: Port on which the server will run
-    - Default: `3000`
-    - Make sure the port is available
-  - `HOST`: Hostname for the server
-    - Default: `localhost`
-    - For production, set to your domain
-
-- **Security Settings**:
-  - `SALT`: Number of salt rounds for password hashing
-    - Recommended: `10`
-    - Higher values increase security but impact performance
-
-- **Admin Account**:
-  - `ADMIN_USERNAME`: Username for the admin account
-    - Default: `admin`
-    - Change this in production
-  - `ADMIN_PASSWORD`: Password for the admin account
-    - Default: `admin`
-    - **IMPORTANT**: Change this immediately after first login
-
-### Security Warnings
-
-1. **Never use default values in production**:
-   - Change all default passwords
-   - Use strong, random values for `API_KEY` and `JWT_SECRET`
-   - Consider using a password manager to generate secure values
-
-2. **Environment Variables**:
-   - Keep your `.env` file secure and never commit it to version control
-   - Add `.env` to your `.gitignore` file
-   - Use different values for development and production
-
-3. **Database Security**:
-   - Ensure the database file has proper permissions
-   - Regularly backup your database
-   - Consider using a more robust database in production
-
-4. **Admin Account**:
-   - Change the default admin credentials immediately after setup
-   - Use a strong password
-   - Consider implementing additional security measures for admin access
-
-### Example Secure Configuration
-
-Here's an example of secure values (DO NOT USE THESE - generate your own):
-
-```
-DB_PATH=/var/lib/trackit/production.db
-API_KEY=8f7d3b2a1c9e6f4a5b2c8d7e3f1a9b6c
-JWT_SECRET=9e8f7d6c5b4a3f2e1d0c9b8a7f6e5d4c
-PORT=3000
-HOST=api.yourdomain.com
-SALT=10
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=YourSecurePassword123!
-```
 
 ## Project Structure
 
