@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Setup logout button
     document.getElementById('logout-btn').addEventListener('click', function() {
         localStorage.removeItem('adminLoggedIn');
+        localStorage.removeItem('apiKey');
         window.location.href = 'index.html';
     });
 
