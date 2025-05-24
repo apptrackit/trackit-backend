@@ -1,7 +1,10 @@
-const db = require('../database');
+const express = require('express');
+const router = express.Router();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const { generateDeviceId } = require('../auth');
+const db = require('../database');
 
 // Generate refresh token
 const generateRefreshToken = () => {
@@ -41,7 +44,7 @@ exports.register = async (req, res) => {
 
           // Create access token (7 days)
           const accessToken = jwt.sign(
-            { userId: this.lastID, username: username },
+            { userId: this.lastID, username: username, deviceId: generateDeviceId(req) },
             process.env.JWT_SECRET,
             { expiresIn: '7d' }
           );
@@ -56,10 +59,12 @@ exports.register = async (req, res) => {
           const refreshTokenExpiresAt = new Date();
           refreshTokenExpiresAt.setDate(refreshTokenExpiresAt.getDate() + 365);
 
+          const deviceId = generateDeviceId(req);
+
           // Store session in database
           db.run(
-            'INSERT INTO sessions (user_id, access_token, refresh_token, access_token_expires_at, refresh_token_expires_at) VALUES (?, ?, ?, ?, ?)',
-            [this.lastID, accessToken, refreshToken, accessTokenExpiresAt.toISOString(), refreshTokenExpiresAt.toISOString()],
+            'INSERT INTO sessions (user_id, device_id, access_token, refresh_token, access_token_expires_at, refresh_token_expires_at) VALUES (?, ?, ?, ?, ?, ?)',
+            [this.lastID, deviceId, accessToken, refreshToken, accessTokenExpiresAt.toISOString(), refreshTokenExpiresAt.toISOString()],
             function(err) {
               if (err) {
                 console.error('Error creating session:', err);
@@ -73,6 +78,7 @@ exports.register = async (req, res) => {
                 accessToken: accessToken,
                 refreshToken: refreshToken,
                 apiKey: process.env.API_KEY,
+                deviceId: deviceId,
                 user: {
                   id: this.lastID,
                   username: username,
