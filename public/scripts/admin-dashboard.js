@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Admin dashboard initializing...');
-    
+    localStorage.getItem('token');
     // Check if user is logged in
     if (localStorage.getItem('adminLoggedIn') !== 'true') {
         console.log('Not logged in, redirecting to login page');
@@ -64,7 +64,7 @@ async function fetchUserData() {
     try {
         console.log('Fetching user data...');
         // Add timestamp to prevent caching issues
-        const response = await fetch('/admin/getAllUserData?t=' + new Date().getTime());
+        const response = await fetch('/admin/getAllUserData?t=',{ headers: { 'x-api-key': localStorage.getItem('apiKey') } });
         
         console.log('Response status:', response.status);
         
@@ -429,7 +429,8 @@ async function saveChanges() {
         const response = await fetch('/admin/updateUser', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'x-api-key': localStorage.getItem('apiKey')
             },
             body: JSON.stringify(userData)
         });
@@ -541,7 +542,8 @@ async function deleteUser(userId) {
         const response = await fetch('/admin/deleteUser', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'x-api-key': localStorage.getItem('apiKey')
             },
             body: JSON.stringify({ id: userId })
         });
