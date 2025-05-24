@@ -359,7 +359,7 @@ function openEditModal(user) {
             return `<div class="form-group">
                 <label for="edit-${key}">${key}:</label>
                 <input type="${isPasswordField ? 'password' : 'text'}" id="edit-${key}" name="${key}" 
-                       value="${value}" placeholder="${isPasswordField ? 'Enter new password to change' : ''}">
+                        placeholder="${isPasswordField ? 'Enter new password to change' : ''}">
                 ${isPasswordField ? '<span class="field-info">Leave empty to keep current password</span>' : ''}
             </div>`;
         } else {
@@ -422,6 +422,8 @@ async function saveChanges() {
             userData[key] = false;
         } else if (!isNaN(value) && value !== '') {
             userData[key] = Number(value);
+        }else if(value === ""){
+            userData[key] = userData[key];
         } else {
             userData[key] = value;
         }
