@@ -236,36 +236,27 @@ exports.logoutAll = async (req, res) => {
 
 // List active sessions
 exports.listSessions = async (req, res) => {
-  const token = req.headers['authorization']?.split(' ')[1];
+  const { userId } = req.body;
   
-  if (!token) {
-    return res.status(400).json({ success: false, error: 'Token is required' });
+  if (!userId) {
+    return res.status(400).json({ success: false, error: 'User ID is required' });
   }
 
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    db.all(
-      'SELECT id, device_id, created_at, last_refresh_at, refresh_count FROM sessions WHERE user_id = ? AND refresh_token_expires_at > datetime("now")',
-      [decoded.userId],
-      (err, sessions) => {
-        if (err) {
-          console.error('Error getting sessions:', err);
-          return res.status(500).json({ success: false, error: 'Failed to get sessions' });
-        }
-
-        res.json({
-          success: true,
-          sessions: sessions.map(session => ({
-            ...session,
-            isCurrentDevice: session.device_id === decoded.deviceId
-          }))
-        });
+  db.all(
+    'SELECT id, device_id, created_at, last_refresh_at, refresh_count FROM sessions WHERE user_id = ? AND refresh_token_expires_at > datetime("now")',
+    [userId],
+    (err, sessions) => {
+      if (err) {
+        console.error('Error getting sessions:', err);
+        return res.status(500).json({ success: false, error: 'Failed to get sessions' });
       }
-    );
-  } catch (error) {
-    return res.status(401).json({ success: false, error: 'Invalid token' });
-  }
+
+      res.json({
+        success: true,
+        sessions: sessions
+      });
+    }
+  );
 };
 
 // Check session status
