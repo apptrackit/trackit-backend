@@ -369,7 +369,7 @@ function openEditModal(user) {
             </div>`;
         }
     }).join('');
-    
+
     // Set the modal content
     modal.innerHTML = `
         <div class="modal-content">
@@ -378,9 +378,11 @@ function openEditModal(user) {
                 <span class="close-modal">&times;</span>
             </div>
             <div class="modal-body">
-                <form id="edit-form">
-                    ${formFields}
-                </form>
+                <div style="width:100%;max-width:340px;margin:0 auto;">
+                    <form id="edit-form">
+                        ${formFields}
+                    </form>
+                </div>
             </div>
             <div class="modal-footer">
                 <button id="save-changes-btn" class="primary-btn">Save Changes</button>
@@ -388,7 +390,7 @@ function openEditModal(user) {
             </div>
         </div>
     `;
-    
+
     // Show the modal
     modal.style.display = 'block';
 }
@@ -406,11 +408,11 @@ function closeEditModal() {
 async function saveChanges() {
     const form = document.getElementById('edit-form');
     if (!form) return;
-    
+
     // Get form data
     const formData = new FormData(form);
     const userData = {};
-    
+
     // Convert FormData to JSON object
     for (const [key, value] of formData.entries()) {
         // Convert to appropriate data types
@@ -424,7 +426,7 @@ async function saveChanges() {
             userData[key] = value;
         }
     }
-    
+
     try {
         // Send the updated data to the server
         const response = await fetch('/admin/updateUser', {
@@ -435,20 +437,20 @@ async function saveChanges() {
             },
             body: JSON.stringify(userData)
         });
-        
+
         if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
         }
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             // Close the modal
             closeEditModal();
-            
+
             // Refresh the data to show the updates
             fetchUserData();
-            
+
             // Show success message
             showNotification('User data updated successfully!', 'success');
         } else {
@@ -469,14 +471,14 @@ function showNotification(message, type = 'info') {
         notification.id = 'notification';
         document.body.appendChild(notification);
     }
-    
+
     // Set the message and styling
     notification.textContent = message;
     notification.className = `notification ${type}`;
-    
+
     // Show the notification
     notification.style.display = 'block';
-    
+
     // Hide after 3 seconds
     setTimeout(() => {
         notification.style.display = 'none';
@@ -493,7 +495,7 @@ function openDeleteConfirmation(user) {
         modal.className = 'modal';
         document.body.appendChild(modal);
     }
-    
+
     // Set the modal content
     modal.innerHTML = `
         <div class="modal-content">
@@ -511,16 +513,16 @@ function openDeleteConfirmation(user) {
             </div>
         </div>
     `;
-    
+
     // Show the modal
     modal.style.display = 'block';
-    
+
     // Add event listener for the confirm delete button
     document.getElementById('confirm-delete-btn').addEventListener('click', function() {
         const userId = this.getAttribute('data-user-id');
         deleteUser(userId);
     });
-    
+
     // Close modal when clicking outside of it
     modal.addEventListener('click', function(event) {
         if (event.target === modal) {
@@ -548,20 +550,20 @@ async function deleteUser(userId) {
             },
             body: JSON.stringify({ id: userId })
         });
-        
+
         if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
         }
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             // Close the modal
             closeDeleteModal();
-            
+
             // Refresh the data to reflect the deletion
             fetchUserData();
-            
+
             // Show success message
             showNotification('User deleted successfully!', 'success');
         } else {
