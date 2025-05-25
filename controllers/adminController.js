@@ -153,3 +153,57 @@ exports.deleteUser = (req, res) => {
     });
   });
 };
+
+exports.createUser = (req, res) => {
+  const { username, email, password } = req.body;
+
+  // Validate required fields
+  if (!username || !email || !password) {
+    return res.status(400).json({ 
+      success: false, 
+      error: 'Username, email, and password are required' 
+    });
+  }
+
+  // Check if username or email already exists
+  db.get('SELECT * FROM users WHERE username = ? OR email = ?', [username, email], (err, existingUser) => {
+    if (err) {
+      console.error('Error checking existing user:', err.message);
+      return res.status(500).json({ success: false, error: 'Database error' });
+    }
+
+    if (existingUser) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Username or email already exists' 
+      });
+    }
+
+    // Hash the password
+    bcrypt.hash(password, saltRounds, (err, hashedPassword) => {
+      if (err) {
+        console.error('Error hashing password:', err);
+        return res.status(500).json({ success: false, error: 'Password hashing failed' });
+      }
+
+      // Insert new user without session-related fields
+      const sql = `
+        INSERT INTO users (username, email, password_hash, created_at, updated_at)
+        VALUES (?, ?, ?, datetime('now'), datetime('now'))
+      `;
+
+      db.run(sql, [username, email, hashedPassword], function(err) {
+        if (err) {
+          console.error('Error creating user:', err.message);
+          return res.status(500).json({ success: false, error: 'Database error' });
+        }
+
+        res.json({
+          success: true,
+          message: 'User created successfully',
+          userId: this.lastID
+        });
+      });
+    });
+  });
+};

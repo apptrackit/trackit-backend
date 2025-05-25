@@ -21,6 +21,14 @@ const validateApiKey = (req, res, next) => {
   next();
 };
 
+const validateAdminApiKey = (req, res, next) => {
+  const adminApiKey = req.headers['x-admin-api-key'];
+  if (!adminApiKey || adminApiKey !== process.env.ADMIN_API_KEY) {
+    return res.status(401).json({ success: false, error: 'Invalid admin API key' });
+  }
+  next();
+};
+
 const validateToken = async (req, res, next) => {
   const token = req.headers['authorization']?.split(' ')[1];
   
@@ -68,6 +76,7 @@ const generateDeviceId = (req) => {
 
 module.exports = {
   validateApiKey,
+  validateAdminApiKey,
   validateToken,
   generateDeviceId
 };

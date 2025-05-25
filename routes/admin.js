@@ -1,18 +1,19 @@
 const express = require('express');
 const router = express.Router();
-const { validateApiKey } = require('../auth');
+const { validateAdminApiKey } = require('../auth');
 const adminController = require('../controllers/adminController');
 
-router.post('/user', validateApiKey, adminController.getUserInfo);
+router.post('/user', validateAdminApiKey, adminController.getUserInfo);
 
-router.get('/getAllUserData',validateApiKey, adminController.getAllUserData);
+router.get('/getAllUserData', validateAdminApiKey, adminController.getAllUserData);
 
 // Get all emails endpoint
-router.get('/emails', validateApiKey, adminController.getAllEmails);
+router.get('/emails', validateAdminApiKey, adminController.getAllEmails);
 
 // User data management routes
-router.post('/updateUser',validateApiKey, adminController.updateUser);
-router.post('/deleteUser',validateApiKey, adminController.deleteUser);
+router.post('/updateUser', validateAdminApiKey, adminController.updateUser);
+router.post('/deleteUser', validateAdminApiKey, adminController.deleteUser);
+router.post('/createUser', validateAdminApiKey, adminController.createUser);
 
 router.post('/login', (req, res) => {
   const { username, password } = req.body;
