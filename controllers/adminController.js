@@ -186,10 +186,10 @@ exports.createUser = (req, res) => {
         return res.status(500).json({ success: false, error: 'Password hashing failed' });
       }
 
-      // Insert new user without session-related fields
+      // Insert new user
       const sql = `
-        INSERT INTO users (username, email, password_hash, created_at, updated_at)
-        VALUES (?, ?, ?, datetime('now'), datetime('now'))
+        INSERT INTO users (username, email, password)
+        VALUES (?, ?, ?)
       `;
 
       db.run(sql, [username, email, hashedPassword], function(err) {

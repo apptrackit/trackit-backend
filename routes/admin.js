@@ -21,7 +21,8 @@ router.post('/login', (req, res) => {
   if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
     res.json({
       success: true,
-      token: process.env.API_KEY,
+      adminApiKey: process.env.ADMIN_API_KEY,
+      apiKey: process.env.API_KEY,
       username: username,
       message: 'Admin login successful'
     });

@@ -193,45 +193,38 @@ exports.refreshToken = async (req, res) => {
 
 // Logout user
 exports.logout = async (req, res) => {
-  const token = req.headers['authorization']?.split(' ')[1];
-  const deviceId = req.body.deviceId;
+  const { deviceId, userId } = req.body;
   
-  if (!token || !deviceId) {
-    return res.status(400).json({ success: false, error: 'Token and device ID are required' });
+  if (!deviceId || !userId) {
+    return res.status(400).json({ success: false, error: 'Device ID and User ID are required' });
   }
 
-  db.run('DELETE FROM sessions WHERE access_token = ? AND device_id = ?', [token, deviceId], function(err) {
+  db.run('DELETE FROM sessions WHERE device_id = ? AND user_id = ?', [deviceId, userId], function(err) {
     if (err) {
       console.error('Error deleting session:', err);
       return res.status(500).json({ success: false, error: 'Failed to logout' });
     }
-
+    
     res.json({ success: true, message: 'Logged out successfully' });
   });
 };
 
 // Logout from all devices
 exports.logoutAll = async (req, res) => {
-  const token = req.headers['authorization']?.split(' ')[1];
+  const { userId } = req.body;
   
-  if (!token) {
-    return res.status(400).json({ success: false, error: 'Token is required' });
+  if (!userId) {
+    return res.status(400).json({ success: false, error: 'User ID is required' });
   }
 
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    db.run('DELETE FROM sessions WHERE user_id = ?', [decoded.userId], function(err) {
-      if (err) {
-        console.error('Error deleting sessions:', err);
-        return res.status(500).json({ success: false, error: 'Failed to logout from all devices' });
-      }
+  db.run('DELETE FROM sessions WHERE user_id = ?', [userId], function(err) {
+    if (err) {
+      console.error('Error deleting sessions:', err);
+      return res.status(500).json({ success: false, error: 'Failed to logout from all devices' });
+    }
 
-      res.json({ success: true, message: 'Logged out from all devices successfully' });
-    });
-  } catch (error) {
-    return res.status(401).json({ success: false, error: 'Invalid token' });
-  }
+    res.json({ success: true, message: 'Logged out from all devices successfully' });
+  });
 };
 
 // List active sessions
