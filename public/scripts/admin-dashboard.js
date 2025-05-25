@@ -28,6 +28,7 @@ function setupEventListeners() {
     document.getElementById('create-user-btn').addEventListener('click', () => {
         const modal = document.getElementById('create-modal');
         modal.style.display = 'block';
+        document.body.classList.add('modal-open');
         
         // Add event listeners for the modal
         const closeButtons = modal.querySelectorAll('.close-modal');
@@ -35,6 +36,7 @@ function setupEventListeners() {
             btn.addEventListener('click', () => {
                 modal.style.display = 'none';
                 document.getElementById('create-form').reset();
+                document.body.classList.remove('modal-open');
             });
         });
         
@@ -43,6 +45,7 @@ function setupEventListeners() {
             if (event.target === modal) {
                 modal.style.display = 'none';
                 document.getElementById('create-form').reset();
+                document.body.classList.remove('modal-open');
             }
         });
     });
@@ -471,11 +474,13 @@ function openEditModal(user) {
     `;
 
     modal.style.display = 'block';
+    document.body.classList.add('modal-open');
     
     // Add event listeners for the new close buttons
     modal.querySelectorAll('.close-modal').forEach(btn => {
         btn.addEventListener('click', () => {
             modal.style.display = 'none';
+            document.body.classList.remove('modal-open');
         });
     });
 
@@ -574,11 +579,13 @@ function openDeleteConfirmation(user) {
     `;
 
     modal.style.display = 'block';
+    document.body.classList.add('modal-open');
     
     // Add event listeners for the new close buttons
     modal.querySelectorAll('.close-modal').forEach(btn => {
         btn.addEventListener('click', () => {
             modal.style.display = 'none';
+            document.body.classList.remove('modal-open');
         });
     });
 
@@ -687,12 +694,14 @@ function showUserSessions(user) {
     
     // Show the modal
     modal.style.display = 'block';
+    document.body.classList.add('modal-open');
     
     // Add event listeners for closing the modal
     const closeButtons = modal.querySelectorAll('.close-modal');
     closeButtons.forEach(button => {
         button.addEventListener('click', () => {
             modal.style.display = 'none';
+            document.body.classList.remove('modal-open');
             // Refresh dashboard data when closing modal
             fetchUserData();
             updateStats();
@@ -703,6 +712,7 @@ function showUserSessions(user) {
     modal.addEventListener('click', (event) => {
         if (event.target === modal) {
             modal.style.display = 'none';
+            document.body.classList.remove('modal-open');
             // Refresh dashboard data when closing modal
             fetchUserData();
             updateStats();
@@ -856,3 +866,36 @@ async function logoutAllUserSessions(userId) {
         showError('Failed to logout all sessions');
     }
 }
+
+// Function to open modal
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    modal.style.display = 'block';
+    document.body.classList.add('modal-open');
+}
+
+// Function to close modal
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    modal.style.display = 'none';
+    document.body.classList.remove('modal-open');
+}
+
+// Add event listeners for modal close buttons
+document.querySelectorAll('.close-modal').forEach(button => {
+    button.addEventListener('click', () => {
+        const modal = button.closest('.modal');
+        modal.style.display = 'none';
+        document.body.classList.remove('modal-open');
+    });
+});
+
+// Close modal when clicking outside
+document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.style.display = 'none';
+            document.body.classList.remove('modal-open');
+        }
+    });
+});
