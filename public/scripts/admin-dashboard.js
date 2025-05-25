@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Admin dashboard initializing...');
-    localStorage.getItem('token');
+    
     // Check if user is logged in
     if (localStorage.getItem('adminLoggedIn') !== 'true') {
         console.log('Not logged in, redirecting to login page');
@@ -8,78 +8,73 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
 
-    // Fetch user data
-    fetchUserData();
-
-    // Setup logout button
-    document.getElementById('logout-btn').addEventListener('click', function() {
-        localStorage.removeItem('adminLoggedIn');
-        localStorage.removeItem('apiKey');
-        window.location.href = 'index.html';
-    });
-
-    // Close modal when clicking outside of it
-    document.addEventListener('click', function(event) {
-        const editModal = document.getElementById('edit-modal');
-        const deleteModal = document.getElementById('delete-modal');
-        
-        if (event.target === editModal) {
-            closeEditModal();
-        } else if (event.target === deleteModal) {
-            closeDeleteModal();
-        }
-    });
-
-    // Setup modal close buttons
-    document.body.addEventListener('click', function(event) {
-        if (event.target.classList.contains('close-modal')) {
-            const editModal = document.getElementById('edit-modal');
-            const deleteModal = document.getElementById('delete-modal');
-            
-            if (editModal && editModal.style.display === 'block') {
-                closeEditModal();
-            } else if (deleteModal && deleteModal.style.display === 'block') {
-                closeDeleteModal();
-            }
-        }
-    });
-
-    // Setup save changes button
-    document.body.addEventListener('click', function(event) {
-        if (event.target.id === 'save-changes-btn') {
-            saveChanges();
-        }
-    });
-
+    // Initialize the dashboard
+    initializeDashboard();
 });
 
-// Store the data globally for sorting operations
-let userData = [];
-let currentSortColumn = null;
-let currentSortDirection = 'asc';
-let currentEditingUserId = null;
+function initializeDashboard() {
+    // Setup event listeners
+    setupEventListeners();
+    
+    // Load initial data
+    loadDashboardData();
+}
+
+function setupEventListeners() {
+    // Logout button
+    document.getElementById('logout-btn').addEventListener('click', handleLogout);
+    
+    // Create user button
+    document.getElementById('create-user-btn').addEventListener('click', () => {
+        const modal = document.getElementById('create-modal');
+        modal.style.display = 'block';
+        
+        // Add event listeners for the modal
+        const closeButtons = modal.querySelectorAll('.close-modal');
+        closeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                modal.style.display = 'none';
+                document.getElementById('create-form').reset();
+            });
+        });
+        
+        // Close on outside click
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+                document.getElementById('create-form').reset();
+            }
+        });
+    });
+    
+    // Search input
+    document.getElementById('search-input').addEventListener('input', handleSearch);
+    
+    // Create user form
+    document.getElementById('confirm-create-btn').addEventListener('click', createUser);
+}
+
+async function loadDashboardData() {
+    await Promise.all([
+        fetchUserData(),
+        updateStats()
+    ]);
+}
 
 async function fetchUserData() {
     const userDataContainer = document.getElementById('user-data');
     
     try {
-        console.log('Fetching user data...');
-        // Add timestamp to prevent caching issues
-        const response = await fetch('/admin/getAllUserData?t=',{ headers: { 'x-api-key': localStorage.getItem('apiKey') } });
-        
-        console.log('Response status:', response.status);
+        const response = await fetch('/admin/getAllUserData', {
+            headers: { 'x-admin-api-key': localStorage.getItem('adminApiKey') }
+        });
         
         if (!response.ok) {
-            const errorText = await response.text();
-            console.error('API error response:', errorText);
-            throw new Error(`HTTP error! Status: ${response.status}, Details: ${errorText}`);
+            throw new Error(`HTTP error! Status: ${response.status}`);
         }
         
         const data = await response.json();
-        console.log('Response data:', data);
-        
-        userData = data.users || []; // Handle missing users property
-        console.log('User data array:', userData);
+        userData = data.users || [];
         
         if (!userData.length) {
             userDataContainer.innerHTML = `
@@ -94,15 +89,141 @@ async function fetchUserData() {
         displayUserData(userData, userDataContainer);
     } catch (error) {
         console.error('Error fetching user data:', error);
-        userDataContainer.innerHTML = `
-            <div class="error-message">
-                <p>Failed to load user data: ${error.message}</p>
-                <p>Please try refreshing the page or check the browser console for details.</p>
-                <p>If you're running this locally, make sure the server is running.</p>
-            </div>
-        `;
+        showError('Failed to load user data. Please try refreshing the page.');
     }
 }
+
+async function updateStats() {
+    try {
+        const [usersResponse, emailsResponse] = await Promise.all([
+            fetch('/admin/getAllUserData', {
+                headers: { 'x-admin-api-key': localStorage.getItem('adminApiKey') }
+            }),
+            fetch('/admin/emails', {
+                headers: { 'x-admin-api-key': localStorage.getItem('adminApiKey') }
+            })
+        ]);
+
+        const [usersData, emailsData] = await Promise.all([
+            usersResponse.json(),
+            emailsResponse.json()
+        ]);
+
+        const users = usersData.users || [];
+        
+        // Get total active sessions across all users
+        let totalSessions = 0;
+        for (const user of users) {
+            const sessionsResponse = await fetch('/auth/sessions', {
+                method: 'POST',
+                headers: {
+                    'x-api-key': localStorage.getItem('apiKey'),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ userId: user.id })
+            });
+            
+            if (sessionsResponse.ok) {
+                const sessionsData = await sessionsResponse.json();
+                if (sessionsData.success && sessionsData.sessions) {
+                    totalSessions += sessionsData.sessions.length;
+                }
+            }
+        }
+
+        document.getElementById('total-users').textContent = users.length;
+        document.getElementById('active-sessions').textContent = totalSessions;
+        document.getElementById('total-emails').textContent = emailsData.emails?.length || 0;
+    } catch (error) {
+        console.error('Error updating stats:', error);
+        showError('Failed to update statistics');
+    }
+}
+
+function handleSearch(event) {
+    const searchTerm = event.target.value.toLowerCase();
+    const filteredData = userData.filter(user => 
+        user.username.toLowerCase().includes(searchTerm) ||
+        user.email.toLowerCase().includes(searchTerm)
+    );
+    displayUserData(filteredData, document.getElementById('user-data'));
+}
+
+async function createUser() {
+    const username = document.getElementById('create-username').value;
+    const email = document.getElementById('create-email').value;
+    const password = document.getElementById('create-password').value;
+
+    if (!username || !email || !password) {
+        showError('All fields are required');
+        return;
+    }
+
+    try {
+        const response = await fetch('/admin/createUser', {
+            method: 'POST',
+            headers: {
+                'x-admin-api-key': localStorage.getItem('adminApiKey'),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username, email, password })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess('User created successfully');
+            // Close the modal and reset form
+            const modal = document.getElementById('create-modal');
+            modal.style.display = 'none';
+            document.getElementById('create-form').reset();
+            // Refresh the data
+            fetchUserData();
+            updateStats();
+        } else {
+            throw new Error(result.error || 'Failed to create user');
+        }
+    } catch (error) {
+        console.error('Error creating user:', error);
+        showError('Failed to create user: ' + error.message);
+    }
+}
+
+function handleLogout() {
+    localStorage.removeItem('adminLoggedIn');
+    localStorage.removeItem('apiKey');
+    localStorage.removeItem('adminApiKey');
+    window.location.href = 'index.html';
+}
+
+function showSuccess(message) {
+    showNotification(message, 'success');
+}
+
+function showError(message) {
+    showNotification(message, 'error');
+}
+
+function showNotification(message, type = 'info') {
+    const notification = document.getElementById('notification');
+    notification.textContent = message;
+    notification.className = `notification ${type}`;
+    notification.style.display = 'block';
+    
+    setTimeout(() => {
+        notification.style.display = 'none';
+    }, 3000);
+}
+
+// Store the data globally for sorting operations
+let userData = [];
+let currentSortColumn = null;
+let currentSortDirection = 'asc';
+let currentEditingUserId = null;
 
 function sortData(data, column, direction) {
     return [...data].sort((a, b) => {
@@ -136,10 +257,14 @@ function displayUserData(data, container) {
         const thead = document.createElement('thead');
         const headerRow = document.createElement('tr');
         
-        // Get all unique keys from all objects
+        // Get all unique keys from all objects, excluding password fields
         const allKeys = new Set();
         data.forEach(item => {
-            Object.keys(item).forEach(key => allKeys.add(key));
+            Object.keys(item).forEach(key => {
+                if (key !== 'password' && key !== 'passwordHash' && key !== 'password_hash') {
+                    allKeys.add(key);
+                }
+            });
         });
         
         // Create header cells
@@ -162,6 +287,11 @@ function displayUserData(data, container) {
             headerRow.appendChild(th);
         });
         
+        // Add sessions column header
+        const sessionsHeader = document.createElement('th');
+        sessionsHeader.textContent = 'Active Sessions';
+        headerRow.appendChild(sessionsHeader);
+        
         // Add actions column header
         const actionsHeader = document.createElement('th');
         actionsHeader.textContent = 'Actions';
@@ -183,57 +313,8 @@ function displayUserData(data, container) {
                 if (key in item) {
                     const value = item[key];
                     
-                    // Check if this is a password hash field and mask it with asterisks
-                    const isPasswordField = key === 'password' || 
-                                           key === 'passwordHash' || 
-                                           key === 'password_hash';
-                    
                     if (value === null) {
                         cell.textContent = 'null';
-                    } else if (isPasswordField && value) {
-                        // Create a wrapper for the password hash field
-                        const passwordWrapper = document.createElement('div');
-                        passwordWrapper.className = 'password-wrapper';
-                        
-                        // Create the masked password display
-                        const maskedPassword = document.createElement('div');
-                        maskedPassword.className = 'masked-password';
-                        maskedPassword.textContent = value.substring(0, 3) + '**********';
-                        maskedPassword.title = "Hover to view full hash, click to copy";
-                        maskedPassword.dataset.fullHash = value;
-                        
-                        // Create the tooltip element
-                        const tooltip = document.createElement('div');
-                        tooltip.className = 'hash-tooltip';
-                        tooltip.textContent = value;
-                        
-                        // Add click handler to copy the hash
-                        maskedPassword.addEventListener('click', function() {
-                            const hash = this.dataset.fullHash;
-                            copyTextToClipboard(hash)
-                                .then(() => {
-                                    // Show copy confirmation
-                                    const copyConfirm = document.createElement('div');
-                                    copyConfirm.className = 'copy-confirm';
-                                    copyConfirm.textContent = 'Copied!';
-                                    this.appendChild(copyConfirm);
-                                    
-                                    // Remove confirmation after animation
-                                    setTimeout(() => {
-                                        if (copyConfirm.parentNode === this) {
-                                            this.removeChild(copyConfirm);
-                                        }
-                                    }, 1500);
-                                })
-                                .catch(err => {
-                                    console.error('Failed to copy:', err);
-                                });
-                        });
-                        
-                        // Assemble the components
-                        passwordWrapper.appendChild(maskedPassword);
-                        passwordWrapper.appendChild(tooltip);
-                        cell.appendChild(passwordWrapper);
                     } else if (typeof value === 'object') {
                         cell.textContent = JSON.stringify(value);
                     } else {
@@ -246,20 +327,39 @@ function displayUserData(data, container) {
                 row.appendChild(cell);
             });
             
-            // Add actions cell with edit and delete buttons
+            // Add sessions cell with count and manage button
+            const sessionsCell = document.createElement('td');
+            sessionsCell.className = 'sessions-cell';
+            
+            const sessionsButton = document.createElement('button');
+            sessionsButton.className = 'sessions-btn';
+            sessionsButton.innerHTML = '<i class="fas fa-clock"></i> <span class="sessions-count">Loading...</span>';
+            sessionsButton.addEventListener('click', () => showUserSessions(item));
+            sessionsCell.appendChild(sessionsButton);
+            
+            // Fetch and update sessions count
+            fetchUserSessionsCount(item.id).then(count => {
+                sessionsButton.querySelector('.sessions-count').textContent = count;
+            });
+            
+            row.appendChild(sessionsCell);
+            
+            // Add actions cell with improved button design
             const actionsCell = document.createElement('td');
             actionsCell.className = 'actions-cell';
             
             // Edit button
             const editButton = document.createElement('button');
-            editButton.textContent = 'Edit';
-            editButton.classList.add('edit-btn');
+            editButton.className = 'action-btn edit-btn';
+            editButton.innerHTML = '<i class="fas fa-edit"></i>';
+            editButton.title = 'Edit User';
             editButton.addEventListener('click', () => openEditModal(item));
             
             // Delete button
             const deleteButton = document.createElement('button');
-            deleteButton.textContent = 'Delete';
-            deleteButton.classList.add('delete-btn');
+            deleteButton.className = 'action-btn delete-btn';
+            deleteButton.innerHTML = '<i class="fas fa-trash-alt"></i>';
+            deleteButton.title = 'Delete User';
             deleteButton.addEventListener('click', () => openDeleteConfirmation(item));
             
             actionsCell.appendChild(editButton);
@@ -274,19 +374,7 @@ function displayUserData(data, container) {
     } else if (typeof data === 'object' && data !== null) {
         // Display as formatted JSON if not an array
         const formattedJson = JSON.stringify(data, null, 4);
-        
-        // Add syntax highlighting
-        const highlightedJson = formattedJson
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"([^"]+)":/g, '<span class="json-key">"$1"</span>:')
-            .replace(/"([^"]+)"/g, '<span class="json-string">"$1"</span>')
-            .replace(/\b(\d+)\b/g, '<span class="json-number">$1</span>')
-            .replace(/\b(true|false)\b/g, '<span class="json-boolean">$1</span>')
-            .replace(/\bnull\b/g, '<span class="json-null">null</span>');
-        
-        container.innerHTML = `<pre>${highlightedJson}</pre>`;
+        container.innerHTML = `<pre>${formattedJson}</pre>`;
     } else {
         container.innerHTML = '<div class="error-message">No data available</div>';
     }
@@ -313,10 +401,8 @@ function handleSort(column) {
 
 // Open the edit modal and populate with user data
 function openEditModal(user) {
-    // Store the current user ID for later use when saving
     currentEditingUserId = user.id;
     
-    // Create modal if it doesn't exist
     let modal = document.getElementById('edit-modal');
     if (!modal) {
         modal = document.createElement('div');
@@ -325,9 +411,7 @@ function openEditModal(user) {
         document.body.appendChild(modal);
     }
     
-    // Create form fields for each user property
     const formFields = Object.entries(user).map(([key, value]) => {
-        // Skip id field from being editable
         if (key === 'id') {
             return `<div class="form-group">
                 <label>${key}:</label>
@@ -336,12 +420,10 @@ function openEditModal(user) {
             </div>`;
         }
         
-        // Handle password fields specially
         const isPasswordField = key === 'password' || 
                                key === 'passwordHash' || 
                                key === 'password_hash';
         
-        // Handle different types of fields
         if (value === null) {
             return `<div class="form-group">
                 <label for="edit-${key}">${key}:</label>
@@ -358,9 +440,9 @@ function openEditModal(user) {
         } else if (isPasswordField) {
             return `<div class="form-group">
                 <label for="edit-${key}">${key}:</label>
-                <input type="${isPasswordField ? 'password' : 'text'}" id="edit-${key}" name="${key}" 
-                        placeholder="${isPasswordField ? 'Enter new password to change' : ''}">
-                ${isPasswordField ? '<span class="field-info">Leave empty to keep current password</span>' : ''}
+                <input type="password" id="edit-${key}" name="${key}" 
+                        placeholder="Enter new password to change">
+                <span class="field-info">Leave empty to keep current password</span>
             </div>`;
         } else {
             return `<div class="form-group">
@@ -370,19 +452,16 @@ function openEditModal(user) {
         }
     }).join('');
 
-    // Set the modal content
     modal.innerHTML = `
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Edit User</h2>
-                <span class="close-modal">&times;</span>
+                <button class="close-modal">&times;</button>
             </div>
             <div class="modal-body">
-                <div style="width:100%;max-width:340px;margin:0 auto;">
-                    <form id="edit-form">
-                        ${formFields}
-                    </form>
-                </div>
+                <form id="edit-form">
+                    ${formFields}
+                </form>
             </div>
             <div class="modal-footer">
                 <button id="save-changes-btn" class="primary-btn">Save Changes</button>
@@ -391,17 +470,17 @@ function openEditModal(user) {
         </div>
     `;
 
-    // Show the modal
     modal.style.display = 'block';
-}
+    
+    // Add event listeners for the new close buttons
+    modal.querySelectorAll('.close-modal').forEach(btn => {
+        btn.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+    });
 
-// Close the edit modal
-function closeEditModal() {
-    const modal = document.getElementById('edit-modal');
-    if (modal) {
-        modal.style.display = 'none';
-    }
-    currentEditingUserId = null;
+    // Add event listener for save changes button
+    document.getElementById('save-changes-btn').addEventListener('click', saveChanges);
 }
 
 // Save changes from the edit form
@@ -435,7 +514,7 @@ async function saveChanges() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'x-api-key': localStorage.getItem('apiKey')
+                'x-admin-api-key': localStorage.getItem('adminApiKey')
             },
             body: JSON.stringify(userData)
         });
@@ -448,7 +527,10 @@ async function saveChanges() {
 
         if (result.success) {
             // Close the modal
-            closeEditModal();
+            const modal = document.getElementById('edit-modal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
 
             // Refresh the data to show the updates
             fetchUserData();
@@ -464,32 +546,8 @@ async function saveChanges() {
     }
 }
 
-// Display notification message
-function showNotification(message, type = 'info') {
-    // Create notification element if it doesn't exist
-    let notification = document.getElementById('notification');
-    if (!notification) {
-        notification = document.createElement('div');
-        notification.id = 'notification';
-        document.body.appendChild(notification);
-    }
-
-    // Set the message and styling
-    notification.textContent = message;
-    notification.className = `notification ${type}`;
-
-    // Show the notification
-    notification.style.display = 'block';
-
-    // Hide after 3 seconds
-    setTimeout(() => {
-        notification.style.display = 'none';
-    }, 3000);
-}
-
 // Open delete confirmation modal
 function openDeleteConfirmation(user) {
-    // Create modal if it doesn't exist
     let modal = document.getElementById('delete-modal');
     if (!modal) {
         modal = document.createElement('div');
@@ -498,47 +556,36 @@ function openDeleteConfirmation(user) {
         document.body.appendChild(modal);
     }
 
-    // Set the modal content
     modal.innerHTML = `
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Confirm Deletion</h2>
-                <span class="close-modal">&times;</span>
+                <button class="close-modal">&times;</button>
             </div>
             <div class="modal-body">
-                <p>Are you sure you want to delete user with ID ${user.id}?</p>
+                <p>Are you sure you want to delete user "${user.username}"?</p>
                 <p class="warning">This action cannot be undone.</p>
             </div>
             <div class="modal-footer">
-                <button id="confirm-delete-btn" class="danger-btn" data-user-id="${user.id}">Delete</button>
+                <button id="confirm-delete-btn" class="danger-btn">Delete</button>
                 <button class="close-modal secondary-btn">Cancel</button>
             </div>
         </div>
     `;
 
-    // Show the modal
     modal.style.display = 'block';
-
-    // Add event listener for the confirm delete button
-    document.getElementById('confirm-delete-btn').addEventListener('click', function() {
-        const userId = this.getAttribute('data-user-id');
-        deleteUser(userId);
+    
+    // Add event listeners for the new close buttons
+    modal.querySelectorAll('.close-modal').forEach(btn => {
+        btn.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
     });
 
-    // Close modal when clicking outside of it
-    modal.addEventListener('click', function(event) {
-        if (event.target === modal) {
-            closeDeleteModal();
-        }
+    // Add event listener for confirm delete button
+    document.getElementById('confirm-delete-btn').addEventListener('click', () => {
+        deleteUser(user.id);
     });
-}
-
-// Close the delete modal
-function closeDeleteModal() {
-    const modal = document.getElementById('delete-modal');
-    if (modal) {
-        modal.style.display = 'none';
-    }
 }
 
 // Delete the user
@@ -548,7 +595,7 @@ async function deleteUser(userId) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'x-api-key': localStorage.getItem('apiKey')
+                'x-admin-api-key': localStorage.getItem('adminApiKey')
             },
             body: JSON.stringify({ id: userId })
         });
@@ -561,10 +608,14 @@ async function deleteUser(userId) {
 
         if (result.success) {
             // Close the modal
-            closeDeleteModal();
+            const modal = document.getElementById('delete-modal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
 
             // Refresh the data to reflect the deletion
             fetchUserData();
+            updateStats();
 
             // Show success message
             showNotification('User deleted successfully!', 'success');
@@ -574,5 +625,234 @@ async function deleteUser(userId) {
     } catch (error) {
         console.error('Error deleting user:', error);
         showNotification(`Error: ${error.message}`, 'error');
+    }
+}
+
+// Function to fetch user's active sessions count
+async function fetchUserSessionsCount(userId) {
+    try {
+        const response = await fetch('/auth/sessions', {
+            method: 'POST',
+            headers: {
+                'x-api-key': localStorage.getItem('apiKey'),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ userId })
+        });
+        
+        if (!response.ok) {
+            return 0;
+        }
+        
+        const data = await response.json();
+        return data.success ? data.sessions.length : 0;
+    } catch (error) {
+        console.error('Error fetching sessions count:', error);
+        return 0;
+    }
+}
+
+// Function to show user's sessions in a modal
+function showUserSessions(user) {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('sessions-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'sessions-modal';
+        modal.className = 'modal';
+        document.body.appendChild(modal);
+    }
+    
+    // Set initial modal content
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Active Sessions for ${user.username}</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="sessions-list">
+                    <div class="loading">Loading sessions...</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="logout-all-btn" class="danger-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Logout All Sessions
+                </button>
+                <button class="close-modal secondary-btn">Close</button>
+            </div>
+        </div>
+    `;
+    
+    // Show the modal
+    modal.style.display = 'block';
+    
+    // Add event listeners for closing the modal
+    const closeButtons = modal.querySelectorAll('.close-modal');
+    closeButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            modal.style.display = 'none';
+            // Refresh dashboard data when closing modal
+            fetchUserData();
+            updateStats();
+        });
+    });
+    
+    // Close modal when clicking outside
+    modal.addEventListener('click', (event) => {
+        if (event.target === modal) {
+            modal.style.display = 'none';
+            // Refresh dashboard data when closing modal
+            fetchUserData();
+            updateStats();
+        }
+    });
+    
+    // Fetch and display sessions
+    fetchUserSessions(user.id, modal.querySelector('.sessions-list'));
+    
+    // Add event listener for logout all button
+    document.getElementById('logout-all-btn').addEventListener('click', () => {
+        logoutAllUserSessions(user.id);
+    });
+}
+
+// Function to fetch and display user's sessions
+async function fetchUserSessions(userId, container) {
+    try {
+        const response = await fetch('/auth/sessions', {
+            method: 'POST',
+            headers: {
+                'x-api-key': localStorage.getItem('apiKey'),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ userId })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (!data.success || !data.sessions.length) {
+            container.innerHTML = '<div class="info-message">No active sessions found.</div>';
+            return;
+        }
+        
+        const sessionsList = document.createElement('div');
+        sessionsList.className = 'sessions-grid';
+        
+        data.sessions.forEach(session => {
+            const sessionCard = document.createElement('div');
+            sessionCard.className = 'session-card';
+            
+            // Format device ID for display
+            const deviceId = session.device_id;
+            const shortDeviceId = `****${deviceId.slice(-4)}`;
+            
+            sessionCard.innerHTML = `
+                <div class="session-info">
+                    <div class="session-device">
+                        <i class="fas fa-desktop"></i>
+                        <span class="device-id" title="Click to copy full ID">${shortDeviceId}</span>
+                    </div>
+                    <div class="session-time">
+                        <i class="fas fa-clock"></i>
+                        Last active: ${new Date(session.last_refresh_at).toLocaleString()}
+                    </div>
+                    <div class="session-refresh">
+                        <i class="fas fa-sync"></i>
+                        Refreshed ${session.refresh_count} times
+                    </div>
+                </div>
+                <button class="action-btn danger-btn" onclick="logoutSession('${session.device_id}', '${userId}')">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Logout
+                </button>
+            `;
+            
+            // Add click handler for device ID
+            const deviceIdElement = sessionCard.querySelector('.device-id');
+            deviceIdElement.addEventListener('click', async () => {
+                try {
+                    await navigator.clipboard.writeText(deviceId);
+                    const originalText = deviceIdElement.textContent;
+                    deviceIdElement.textContent = 'Copied!';
+                    setTimeout(() => {
+                        deviceIdElement.textContent = originalText;
+                    }, 1500);
+                } catch (err) {
+                    console.error('Failed to copy:', err);
+                }
+            });
+            
+            sessionsList.appendChild(sessionCard);
+        });
+        
+        container.innerHTML = '';
+        container.appendChild(sessionsList);
+    } catch (error) {
+        console.error('Error fetching sessions:', error);
+        container.innerHTML = '<div class="error-message">Failed to load sessions</div>';
+    }
+}
+
+// Function to logout a specific session
+async function logoutSession(deviceId, userId) {
+    try {
+        const response = await fetch('/auth/logout', {
+            method: 'POST',
+            headers: {
+                'x-api-key': localStorage.getItem('apiKey'),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ deviceId, userId })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        
+        showSuccess('Session logged out successfully');
+        // Refresh the sessions list
+        const modal = document.getElementById('sessions-modal');
+        if (modal) {
+            fetchUserSessions(userId, modal.querySelector('.sessions-list'));
+        }
+    } catch (error) {
+        console.error('Error logging out session:', error);
+        showError('Failed to logout session');
+    }
+}
+
+// Function to logout all sessions for a user
+async function logoutAllUserSessions(userId) {
+    try {
+        const response = await fetch('/auth/logout-all', {
+            method: 'POST',
+            headers: {
+                'x-api-key': localStorage.getItem('apiKey'),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ userId })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        
+        showSuccess('All sessions logged out successfully');
+        // Close the modal and refresh the user list
+        const modal = document.getElementById('sessions-modal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+        fetchUserData();
+        updateStats();
+    } catch (error) {
+        console.error('Error logging out all sessions:', error);
+        showError('Failed to logout all sessions');
     }
 }
