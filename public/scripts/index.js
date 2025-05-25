@@ -37,7 +37,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     successMessage.textContent = 'Login successful!';
                     successMessage.style.display = 'block';
-
                     // Redirect to dashboard after short delay
                     setTimeout(() => {
                         window.location.href = 'admin-dashboard.html';
