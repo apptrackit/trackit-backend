@@ -32,7 +32,8 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (data.success) {
                     localStorage.setItem('adminLoggedIn', 'true');
-                    localStorage.setItem('apiKey', data.token);
+                    localStorage.setItem('adminApiKey', data.adminApiKey);
+                    localStorage.setItem('apiKey', data.apiKey);
 
                     successMessage.textContent = 'Login successful!';
                     successMessage.style.display = 'block';

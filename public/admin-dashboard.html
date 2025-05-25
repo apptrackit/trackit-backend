@@ -3,27 +3,99 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - User Data</title>
+    <title>Admin Dashboard</title>
     <link rel="stylesheet" href="css/admin-dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </head>
 <body>
-    <header>
-        <h1>Admin Dashboard</h1>
-        <div class="header-actions">
-            <button id="logout-btn">Logout</button>
-        </div>
-    </header>
-    
-    <main>
-        <div class="data-container">
-            <h2>User Data</h2>
-            <div id="user-data" class="scrollable-content">
-                <div class="loading">Loading user data...</div>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <h1>Admin Dashboard</h1>
+            <div class="header-actions">
+                <button id="create-user-btn" class="primary-btn">
+                    <i class="fas fa-user-plus"></i>
+                    Create New User
+                </button>
+                <button id="logout-btn" class="secondary-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Logout
+                </button>
+            </div>
+        </header>
+
+        <div class="dashboard-content">
+            <div class="stats-section">
+                <div class="stat-card">
+                    <i class="fas fa-users"></i>
+                    <div class="stat-info">
+                        <h3>Total Users</h3>
+                        <p id="total-users">Loading...</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-clock"></i>
+                    <div class="stat-info">
+                        <h3>Active Sessions</h3>
+                        <p id="active-sessions">Loading...</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-envelope"></i>
+                    <div class="stat-info">
+                        <h3>Total Emails</h3>
+                        <p id="total-emails">Loading...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="search-section">
+                <div class="search-container">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="search-input" placeholder="Search users...">
+                </div>
+            </div>
+
+            <div class="content-section active" id="users-section">
+                <div id="user-data" class="data-container">
+                    <div class="loading">Loading user data...</div>
+                </div>
             </div>
         </div>
-    </main>
+    </div>
 
-    <script src="scripts/clipboard-helper.js"></script>
+    <!-- Create User Modal -->
+    <div id="create-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Create New User</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="create-form">
+                    <div class="form-group">
+                        <label for="create-username">Username:</label>
+                        <input type="text" id="create-username" name="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="create-email">Email:</label>
+                        <input type="email" id="create-email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="create-password">Password:</label>
+                        <input type="password" id="create-password" name="password" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button id="confirm-create-btn" class="primary-btn">Create User</button>
+                <button class="close-modal secondary-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="notification"></div>
+
     <script src="scripts/admin-dashboard.js"></script>
 </body>
 </html>
