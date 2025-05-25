@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const db = require('./database');
+const crypto = require('crypto');
 
 const validateApiKey = (req, res, next) => {
   // Check for API key in header
@@ -17,6 +18,14 @@ const validateApiKey = (req, res, next) => {
     return res.status(403).json({ error: 'Invalid API key' });
   }
   
+  next();
+};
+
+const validateAdminApiKey = (req, res, next) => {
+  const adminApiKey = req.headers['x-admin-api-key'];
+  if (!adminApiKey || adminApiKey !== process.env.ADMIN_API_KEY) {
+    return res.status(401).json({ success: false, error: 'Invalid admin API key' });
+  }
   next();
 };
 
@@ -58,4 +67,16 @@ const validateToken = async (req, res, next) => {
   }
 };
 
-module.exports = { validateApiKey, validateToken };
+// Generate device ID from user agent and IP
+const generateDeviceId = (req) => {
+  const userAgent = req.headers['user-agent'] || 'unknown';
+  const ip = req.ip || 'unknown';
+  return crypto.createHash('sha256').update(`${userAgent}${ip}`).digest('hex');
+};
+
+module.exports = {
+  validateApiKey,
+  validateAdminApiKey,
+  validateToken,
+  generateDeviceId
+};

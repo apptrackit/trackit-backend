@@ -1,5 +1,15 @@
-const db = require('../database');
+const express = require('express');
+const router = express.Router();
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const { generateDeviceId } = require('../auth');
+const db = require('../database');
+
+// Generate refresh token
+const generateRefreshToken = () => {
+  return crypto.randomBytes(40).toString('hex');
+};
 
 // Register a new user
 exports.register = async (req, res) => {
@@ -31,7 +41,52 @@ exports.register = async (req, res) => {
             console.error('Error inserting into database:', err.message);
             return res.status(500).json({ success: false, error: 'Database error' });
           }
-          res.status(201).json({ success: true, id: this.lastID });
+
+          // Create access token (7 days)
+          const accessToken = jwt.sign(
+            { userId: this.lastID, username: username, deviceId: generateDeviceId(req) },
+            process.env.JWT_SECRET,
+            { expiresIn: '7d' }
+          );
+
+          // Create refresh token (365 days)
+          const refreshToken = generateRefreshToken();
+
+          // Calculate expiration dates
+          const accessTokenExpiresAt = new Date();
+          accessTokenExpiresAt.setDate(accessTokenExpiresAt.getDate() + 7);
+
+          const refreshTokenExpiresAt = new Date();
+          refreshTokenExpiresAt.setDate(refreshTokenExpiresAt.getDate() + 365);
+
+          const deviceId = generateDeviceId(req);
+
+          // Store session in database
+          db.run(
+            'INSERT INTO sessions (user_id, device_id, access_token, refresh_token, access_token_expires_at, refresh_token_expires_at) VALUES (?, ?, ?, ?, ?, ?)',
+            [this.lastID, deviceId, accessToken, refreshToken, accessTokenExpiresAt.toISOString(), refreshTokenExpiresAt.toISOString()],
+            function(err) {
+              if (err) {
+                console.error('Error creating session:', err);
+                return res.status(500).json({ success: false, error: 'Failed to create session' });
+              }
+
+              res.status(201).json({ 
+                success: true, 
+                authenticated: true,
+                message: 'Registration successful',
+                accessToken: accessToken,
+                refreshToken: refreshToken,
+                apiKey: process.env.API_KEY,
+                deviceId: deviceId,
+                user: {
+                  id: this.lastID,
+                  username: username,
+                  email: email
+                }
+              });
+            }
+          );
         }
       );
     });
