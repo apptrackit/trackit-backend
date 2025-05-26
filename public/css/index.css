@@ -15,8 +15,7 @@ body {
     background-color: #2d3748;
     border-radius: 12px;
     box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3), 0 8px 15px rgba(0, 0, 0, 0.2);
-    width: 100%;
-    max-width: 420px;
+    width: 380px;
     padding: 2.5rem;
     position: relative;
     overflow: hidden;
@@ -151,4 +150,12 @@ h1, h2 {
     .brand-name {
         font-size: 1.8rem;
     }
+}
+
+#loginSection {
+    width: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
 }
