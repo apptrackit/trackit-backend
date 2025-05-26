@@ -11,22 +11,21 @@ A REST API for user management with authentication.
 ## Installation
 
 1. Clone the repository:
-```
+```bash
 git clone https://github.com/apptrackit/trackit-backend
 cd trackit_backend
 ```
 
 2. Install dependencies:
-```
+```bash
 npm install
 ```
-This will install all dependencies listed in `package.json`.
 
 ## Configuration
 
-Create a `.env` file in the root directory with the following variables:
+Create a `.env` file in the root directory:
 
-```
+```env
 # Database Configuration
 DB_PATH=/path/to/your/database.db
 
@@ -44,12 +43,11 @@ SALT=10  # Number of salt rounds for password hashing
 # Admin Account
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=admin
+ADMIN_API_KEY=admin
 ```
-
 
 ## Project Structure
 
-The application follows a modular structure:
 ```
 trackit-backend/
 │
@@ -62,66 +60,65 @@ trackit-backend/
 │   ├── userController.js  # User management logic
 │   └── adminController.js # Admin operations
 │
-└── routes/                # API route definitions
-    ├── auth.js            # Authentication routes
-    ├── users.js           # User management routes
-    └── admin.js           # Admin routes
+├── routes/                # API route definitions
+│   ├── auth.js           # Authentication routes
+│   ├── users.js          # User management routes
+│   └── admin.js          # Admin routes
+│
+└── public/               # Static files
+    ├── admin-dashboard.html
+    ├── styles/
+    └── scripts/
 ```
 
-## Database Setup
+## Database
 
-The application expects a SQLite database with a `users` table. You can create it with:
+The application uses SQLite with two main tables:
 
-```sql
-CREATE TABLE users (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  username TEXT UNIQUE NOT NULL,
-  email TEXT NOT NULL,
-  password TEXT NOT NULL
-);
+### Users Table
+- `id`: Unique identifier
+- `username`: Unique username
+- `email`: User's email
+- `password`: Hashed password
 
-CREATE TABLE sessions (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL,
-  device_id TEXT NOT NULL,
-  access_token TEXT NOT NULL,
-  refresh_token TEXT NOT NULL,
-  access_token_expires_at TEXT NOT NULL,
-  refresh_token_expires_at TEXT NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  last_refresh_at TEXT,
-  refresh_count INTEGER DEFAULT 0,
-  FOREIGN KEY (user_id) REFERENCES users(id),
-  UNIQUE(user_id, device_id)
-);
-```
+### Sessions Table
+- `id`: Unique identifier
+- `user_id`: Reference to users table
+- `device_id`: Unique device identifier
+- `access_token`: JWT access token
+- `refresh_token`: Refresh token
+- `access_token_expires_at`: Access token expiration
+- `refresh_token_expires_at`: Refresh token expiration
+- `created_at`: Session creation timestamp
+- `last_refresh_at`: Last token refresh timestamp
+- `refresh_count`: Number of token refreshes
+
+The database is automatically created and initialized when the application starts.
 
 ## Running the Server
 
-Start the server with:
-
+Start the server:
+```bash
+npm start
 ```
-node app.js
-```
 
-The server will run on the port specified in your `.env` file (default: 3000).
+The server will run on `http://localhost:3000` by default.
 
 ## API Authentication
 
-All endpoints require authentication via an API key. You can provide it in two ways:
+All endpoints require an API key provided either as:
+- Header: `x-api-key: your_api_key`
+- Query: `?apiKey=your_api_key`
 
-1. As a header: `x-api-key: your_api_key`
-2. As a query parameter: `?apiKey=your_api_key`
-
-For authenticated user endpoints, you also need to provide a JWT token in the Authorization header:
+For authenticated user endpoints, include a JWT token:
 `Authorization: Bearer your_jwt_token`
 
-The JWT token contains the following information:
-- `userId`: The ID of the authenticated user
-- `username`: The username of the authenticated user
-- `deviceId`: A unique identifier for the device/browser
-- `iat`: Token issued at timestamp
-- `exp`: Token expiration timestamp
+The JWT token contains:
+- `userId`: User ID
+- `username`: Username
+- `deviceId`: Device identifier
+- `iat`: Issued at timestamp
+- `exp`: Expiration timestamp
 
 ## API Endpoints
 
@@ -155,6 +152,10 @@ The JWT token contains the following information:
     }
   }
   ```
+- **Error Responses**:
+  - 400: Missing username or password
+  - 403: Maximum sessions (5) reached
+  - 500: Database error
 
 #### Check Session Status
 
@@ -162,12 +163,14 @@ The JWT token contains the following information:
 - **Method**: GET
 - **Headers**: 
   - `Authorization: Bearer your_jwt_token`
+  - `x-api-key: your_api_key`
 - **Success Response**: 
   ```json
   {
     "success": true,
     "isAuthenticated": true,
     "message": "Session is valid",
+    "deviceId": "your_device_id",
     "user": {
       "id": 1,
       "username": "johndoe",
@@ -175,21 +178,23 @@ The JWT token contains the following information:
     }
   }
   ```
-- **Expired/Invalid Session Response**:
-  ```json
-  {
-    "success": false,
-    "isAuthenticated": false,
-    "message": "Session expired or invalid"
-  }
-  ```
+- **Error Responses**:
+  - 401: No token provided
+  - 500: Database error
 
 #### Logout
 
 - **URL**: `/auth/logout`
 - **Method**: POST
 - **Headers**: 
-  - `Authorization: Bearer your_jwt_token`
+  - `x-api-key: your_api_key`
+- **Body**:
+  ```json
+  {
+    "deviceId": "your_device_id",
+    "userId": "user_id"
+  }
+  ```
 - **Success Response**: 
   ```json
   {
@@ -197,6 +202,90 @@ The JWT token contains the following information:
     "message": "Logged out successfully"
   }
   ```
+- **Error Responses**:
+  - 400: Missing deviceId or userId
+  - 500: Database error
+
+#### Logout All Devices
+
+- **URL**: `/auth/logout-all`
+- **Method**: POST
+- **Headers**: 
+  - `x-api-key: your_api_key`
+- **Body**:
+  ```json
+  {
+    "userId": "user_id"
+  }
+  ```
+- **Success Response**: 
+  ```json
+  {
+    "success": true,
+    "message": "Logged out from all devices successfully"
+  }
+  ```
+- **Error Responses**:
+  - 400: Missing userId
+  - 500: Database error
+
+#### List Active Sessions
+
+- **URL**: `/auth/sessions`
+- **Method**: POST
+- **Headers**: 
+  - `x-api-key: your_api_key`
+- **Body**:
+  ```json
+  {
+    "userId": "user_id"
+  }
+  ```
+- **Success Response**: 
+  ```json
+  {
+    "success": true,
+    "sessions": [
+      {
+        "id": 1,
+        "device_id": "unique_device_id",
+        "created_at": "2024-03-20T10:00:00Z",
+        "last_refresh_at": "2024-03-20T15:00:00Z",
+        "refresh_count": 2
+      }
+    ]
+  }
+  ```
+- **Error Responses**:
+  - 400: Missing userId
+  - 500: Database error
+
+#### Refresh Token
+
+- **URL**: `/auth/refresh`
+- **Method**: POST
+- **Headers**: 
+  - `x-api-key: your_api_key`
+- **Body**:
+  ```json
+  {
+    "refreshToken": "your_refresh_token",
+    "deviceId": "your_device_id"
+  }
+  ```
+- **Success Response**: 
+  ```json
+  {
+    "success": true,
+    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+    "refreshToken": "new_refresh_token...",
+    "deviceId": "your_device_id"
+  }
+  ```
+- **Error Responses**:
+  - 400: Missing refreshToken or deviceId
+  - 401: Invalid or expired refresh token
+  - 500: Database error
 
 ### User Management
 
@@ -221,6 +310,7 @@ The JWT token contains the following information:
     "accessToken": "eyJhbGciOiJIUzI1NiIs...",
     "refreshToken": "a1b2c3d4e5f6...",
     "apiKey": "your_api_key_here",
+    "deviceId": "unique_device_id",
     "user": {
       "id": 1,
       "username": "johndoe",
@@ -228,6 +318,10 @@ The JWT token contains the following information:
     }
   }
   ```
+- **Error Responses**:
+  - 400: Invalid email format
+  - 409: Username already exists
+  - 500: Database error
 
 #### Change Password
 
@@ -310,10 +404,34 @@ The JWT token contains the following information:
 
 ### Admin Operations
 
+#### Admin Login
+
+- **URL**: `/admin/login`
+- **Method**: POST
+- **Body**:
+  ```json
+  {
+    "username": "admin",
+    "password": "admin"
+  }
+  ```
+- **Success Response**: 
+  ```json
+  {
+    "success": true,
+    "adminApiKey": "your_admin_api_key",
+    "apiKey": "your_api_key",
+    "username": "admin",
+    "message": "Admin login successful"
+  }
+  ```
+
 #### Admin User Lookup
 
 - **URL**: `/admin/user`
 - **Method**: POST
+- **Headers**:
+  - `x-admin-api-key: your_admin_api_key`
 - **Body**:
   ```json
   {
@@ -334,6 +452,8 @@ The JWT token contains the following information:
 
 - **URL**: `/admin/emails`
 - **Method**: GET
+- **Headers**:
+  - `x-admin-api-key: your_admin_api_key`
 - **Success Response**: 
   ```json
   {
@@ -374,168 +494,6 @@ The system uses a combination of access tokens and refresh tokens for session ma
      - Creation timestamp
      - Last refresh timestamp
      - Refresh count
-
-### Authentication Flow
-
-1. **Login**:
-- **URL**: `/auth/login`
-- **Method**: POST
-- **Body**:
-  ```json
-  {
-    "username": "johndoe",
-    "password": "securepassword"
-  }
-  ```
-- **Success Response**: 
-  ```json
-  {
-    "success": true,
-    "authenticated": true,
-    "message": "Authentication successful",
-    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
-    "refreshToken": "a1b2c3d4e5f6...",
-    "apiKey": "your_api_key_here",
-    "deviceId": "unique_device_id",
-    "user": {
-      "id": 1,
-      "username": "johndoe",
-      "email": "john@example.com"
-    }
-  }
-  ```
-
-2. **Register**:
-- **URL**: `/user/register`
-- **Method**: POST
-- **Body**:
-  ```json
-  {
-    "username": "johndoe",
-    "email": "john@example.com",
-    "password": "securepassword"
-  }
-  ```
-- **Success Response**: 
-  ```json
-  {
-    "success": true,
-    "authenticated": true,
-    "message": "Registration successful",
-    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
-    "refreshToken": "a1b2c3d4e5f6...",
-    "apiKey": "your_api_key_here",
-    "deviceId": "unique_device_id",
-    "user": {
-      "id": 1,
-      "username": "johndoe",
-      "email": "john@example.com"
-    }
-  }
-  ```
-
-3. **Refresh Tokens**:
-- **URL**: `/auth/refresh`
-- **Method**: POST
-- **Body**:
-  ```json
-  {
-    "refreshToken": "your_refresh_token",
-    "deviceId": "your_device_id"
-  }
-  ```
-- **Success Response**: 
-  ```json
-  {
-    "success": true,
-    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
-    "refreshToken": "new_refresh_token...",
-    "deviceId": "your_device_id"
-  }
-  ```
-
-4. **Logout from Device**:
-- **URL**: `/auth/logout`
-- **Method**: POST
-- **Headers**: 
-  - `x-api-key: your_api_key`
-  - `Authorization: Bearer your_access_token`
-- **Body**:
-  ```json
-  {
-    "deviceId": "your_device_id"
-  }
-  ```
-- **Success Response**: 
-  ```json
-  {
-    "success": true,
-    "message": "Logged out successfully"
-  }
-  ```
-
-5. **Logout from All Devices**:
-- **URL**: `/auth/logout-all`
-- **Method**: POST
-- **Headers**: 
-  - `x-api-key: your_api_key`
-  - `Authorization: Bearer your_access_token`
-- **Success Response**: 
-  ```json
-  {
-    "success": true,
-    "message": "Logged out from all devices successfully"
-  }
-  ```
-
-6. **List Active Sessions**:
-- **URL**: `/auth/sessions`
-- **Method**: POST
-- **Headers**: 
-  - `x-api-key: your_api_key`
-- **Body**:
-  ```json
-  {
-    "userId": 123
-  }
-  ```
-- **Description**: Lists all active sessions for a specific user. Only requires the API key and the user ID in the request body. This endpoint is useful for administrators or for viewing all sessions associated with a user account.
-- **Success Response**: 
-  ```json
-  {
-    "success": true,
-    "sessions": [
-      {
-        "id": 1,
-        "device_id": "unique_device_id",
-        "created_at": "2024-03-20T10:00:00Z",
-        "last_refresh_at": "2024-03-20T15:00:00Z",
-        "refresh_count": 2
-      }
-    ]
-  }
-  ```
-
-7. **Check Session Status**:
-- **URL**: `/auth/check`
-- **Method**: GET
-- **Headers**: 
-  - `x-api-key: your_api_key`
-  - `Authorization: Bearer your_access_token`
-- **Success Response**: 
-  ```json
-  {
-    "success": true,
-    "isAuthenticated": true,
-    "message": "Session is valid",
-    "deviceId": "your_device_id",
-    "user": {
-      "id": 1,
-      "username": "johndoe",
-      "email": "john@example.com"
-    }
-  }
-  ```
 
 ### Client Implementation
 
