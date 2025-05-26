@@ -184,6 +184,7 @@ async function createUser() {
             const modal = document.getElementById('create-modal');
             modal.style.display = 'none';
             document.getElementById('create-form').reset();
+            document.body.classList.remove('modal-open');
             // Refresh the data
             fetchUserData();
             updateStats();
@@ -535,6 +536,7 @@ async function saveChanges() {
             const modal = document.getElementById('edit-modal');
             if (modal) {
                 modal.style.display = 'none';
+                document.body.classList.remove('modal-open');
             }
 
             // Refresh the data to show the updates
@@ -618,6 +620,7 @@ async function deleteUser(userId) {
             const modal = document.getElementById('delete-modal');
             if (modal) {
                 modal.style.display = 'none';
+                document.body.classList.remove('modal-open');
             }
 
             // Refresh the data to reflect the deletion
@@ -858,6 +861,7 @@ async function logoutAllUserSessions(userId) {
         const modal = document.getElementById('sessions-modal');
         if (modal) {
             modal.style.display = 'none';
+            document.body.classList.remove('modal-open');
         }
         fetchUserData();
         updateStats();
