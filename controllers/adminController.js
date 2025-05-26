@@ -165,6 +165,12 @@ exports.createUser = (req, res) => {
     });
   }
 
+  // Validate email format
+  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ success: false, error: 'Invalid email format' });
+  }
+
   // Check if username or email already exists
   db.get('SELECT * FROM users WHERE username = ? OR email = ?', [username, email], (err, existingUser) => {
     if (err) {
