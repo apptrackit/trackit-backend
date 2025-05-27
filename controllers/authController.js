@@ -236,7 +236,7 @@ exports.listSessions = async (req, res) => {
   }
 
   db.all(
-    'SELECT id, device_id, created_at, last_refresh_at, refresh_count FROM sessions WHERE user_id = ? AND refresh_token_expires_at > datetime("now")',
+    'SELECT id, device_id, created_at, last_refresh_at, last_check_at, refresh_count FROM sessions WHERE user_id = ? AND refresh_token_expires_at > datetime("now")',
     [userId],
     (err, sessions) => {
       if (err) {
@@ -288,6 +288,13 @@ exports.checkSession = async (req, res) => {
             message: 'Session expired or invalid' 
           });
         }
+
+        // Update last_check_at timestamp
+        db.run('UPDATE sessions SET last_check_at = datetime("now") WHERE id = ?', [session.id], (err) => {
+          if (err) {
+            console.error('Error updating last_check_at:', err);
+          }
+        });
         
         // Get user info
         db.get('SELECT id, username, email FROM users WHERE id = ?', 
