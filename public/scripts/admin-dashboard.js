@@ -773,7 +773,7 @@ async function fetchUserSessions(userId, container) {
                     </div>
                     <div class="session-time">
                         <i class="fas fa-clock"></i>
-                        Last active: ${new Date(session.last_refresh_at).toLocaleString()}
+                        Last check: ${new Date(session.last_check_at).toLocaleString()}
                     </div>
                     <div class="session-refresh">
                         <i class="fas fa-sync"></i>
