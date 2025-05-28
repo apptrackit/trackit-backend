@@ -937,29 +937,34 @@ async function updateActiveUsers(range) {
     }
 }
 
-// Event listeners for timeframe selects
-document.addEventListener('DOMContentLoaded', function() {
-    const registrationsRange = document.getElementById('registrations-range');
-    const activeUsersRange = document.getElementById('active-users-range');
+function initializeTimeframeButtons() {
+    const registrationsButtons = document.querySelectorAll('#registrations-range .timeframe-btn');
+    const activeUsersButtons = document.querySelectorAll('#active-users-range .timeframe-btn');
 
-    if (registrationsRange) {
-        registrationsRange.addEventListener('change', (e) => {
-            updateRegistrations(e.target.value);
-        });
+    function handleButtonClick(buttons, clickedButton) {
+        buttons.forEach(btn => btn.classList.remove('active'));
+        clickedButton.classList.add('active');
+        return clickedButton.dataset.value;
     }
 
-    if (activeUsersRange) {
-        activeUsersRange.addEventListener('change', (e) => {
-            updateActiveUsers(e.target.value);
+    registrationsButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const range = handleButtonClick(registrationsButtons, button);
+            updateRegistrationStats(range);
         });
-    }
-});
+    });
 
-// Initial load of stats
-function loadInitialStats() {
-    updateRegistrations('today');
-    updateActiveUsers('24h');
-    // ... existing initial load functions ...
+    activeUsersButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const range = handleButtonClick(activeUsersButtons, button);
+            updateActiveUserStats(range);
+        });
+    });
 }
 
-// ... existing code ...
+document.addEventListener('DOMContentLoaded', () => {
+    initializeTimeframeButtons();
+    loadDashboardData();
+});
+
+// ... rest of existing code ...

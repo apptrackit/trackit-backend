@@ -26,36 +26,50 @@
         <div class="dashboard-content">
             <div class="stats-section">
                 <div class="stat-card">
-                    <i class="fas fa-users"></i>
+                    <div class="stat-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
                     <div class="stat-info">
                         <h3>Total Users</h3>
                         <p id="total-users">Loading...</p>
                     </div>
                 </div>
                 <div class="stat-card">
-                    <i class="fas fa-user-plus small-icon"></i>
+                    <div class="stat-icon">
+                        <i class="fas fa-user-plus"></i>
+                    </div>
                     <div class="stat-info">
-                        <h3>New Registrations</h3>
-                        <p id="new-registrations">Loading...</p>
-                        <select class="timeframe-select" id="registrations-range">
-                            <option value="today">Today</option>
-                            <option value="week">This Week</option>
-                            <option value="month">This Month</option>
-                            <option value="year">This Year</option>
-                        </select>
+                        <div class="stat-header">
+                            <h3>New Registrations</h3>
+                            <div class="stat-value">
+                                <p id="new-registrations">Loading...</p>
+                                <div class="timeframe-buttons" id="registrations-range">
+                                    <button class="timeframe-btn active" data-value="24h">24H</button>
+                                    <button class="timeframe-btn" data-value="week">W</button>
+                                    <button class="timeframe-btn" data-value="month">M</button>
+                                    <button class="timeframe-btn" data-value="year">Y</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="stat-card">
-                    <i class="fas fa-user-clock small-icon"></i>
+                    <div class="stat-icon">
+                        <i class="fas fa-user-clock"></i>
+                    </div>
                     <div class="stat-info">
-                        <h3>Active Users</h3>
-                        <p id="active-users">Loading...</p>
-                        <select class="timeframe-select" id="active-users-range">
-                            <option value="24h">Past 24h</option>
-                            <option value="week">This Week</option>
-                            <option value="month">This Month</option>
-                            <option value="year">This Year</option>
-                        </select>
+                        <div class="stat-header">
+                            <h3>Active Users</h3>
+                            <div class="stat-value">
+                                <p id="active-users">Loading...</p>
+                                <div class="timeframe-buttons" id="active-users-range">
+                                    <button class="timeframe-btn active" data-value="24h">24H</button>
+                                    <button class="timeframe-btn" data-value="week">W</button>
+                                    <button class="timeframe-btn" data-value="month">M</button>
+                                    <button class="timeframe-btn" data-value="year">Y</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

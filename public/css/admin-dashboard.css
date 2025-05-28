@@ -65,12 +65,26 @@ body {
     min-width: 250px;
 }
 
-.stat-card i {
-    font-size: 2rem;
+.stat-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(99, 179, 237, 0.1);
+    border-radius: 8px;
+}
+
+.stat-icon i {
+    font-size: 1.5rem;
     color: #63b3ed;
 }
+
 .stat-info {
     flex-grow: 1;
+}
+
+.stat-header {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -78,9 +92,15 @@ body {
 
 .stat-info h3 {
     color: #a0aec0;
-    margin-bottom: 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
     margin: 0;
-    font-size: 1rem;
+}
+
+.stat-value {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
 }
 
 .stat-info p {
@@ -90,22 +110,40 @@ body {
     color: #e2e8f0;
 }
 
+.timeframe-buttons {
+    display: flex;
+    background-color: #1a1a1a;
+    border-radius: 20px;
+    padding: 4px;
+    gap: 2px;
+}
+
+.timeframe-btn {
+    background: none;
+    border: none;
+    color: #808080;
+    padding: 4px 12px;
+    font-size: 0.875rem;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.timeframe-btn:hover {
+    color: #fff;
+}
+
+.timeframe-btn.active {
+    background-color: #404040;
+    color: #fff;
+}
+
 /* Search Section */
 .small-icon {
     font-size: 1.5em !important;
     margin-bottom: 0.5rem;
 }
 
-.timeframe-select {
-    margin-top: 0.5rem;
-    padding: 0.25rem;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    background-color: white;
-    font-size: 0.8rem;
-    width: 100%;
-    max-width: 150px;
-}
 .search-section {
     margin-bottom: 2rem;
 }
