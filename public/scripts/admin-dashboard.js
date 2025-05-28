@@ -120,7 +120,7 @@ async function updateStats() {
         // Update registration stats
         const registrationsRange = document.getElementById('registrations-range');
         if (registrationsRange) {
-            await updateRegistrations(registrationsRange.value || 'today');
+            await updateRegistrations(registrationsRange.value || '24h');
         }
 
         // Update active users stats
@@ -950,14 +950,14 @@ function initializeTimeframeButtons() {
     registrationsButtons.forEach(button => {
         button.addEventListener('click', () => {
             const range = handleButtonClick(registrationsButtons, button);
-            updateRegistrationStats(range);
+            updateRegistrations(range);
         });
     });
 
     activeUsersButtons.forEach(button => {
         button.addEventListener('click', () => {
             const range = handleButtonClick(activeUsersButtons, button);
-            updateActiveUserStats(range);
+            updateActiveUsers(range);
         });
     });
 }
