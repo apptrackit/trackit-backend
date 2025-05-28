@@ -262,8 +262,8 @@ exports.getRegistrations = (req, res) => {
   
   const now = new Date();
   switch(range) {
-    case 'today':
-      timeFilter = new Date(now.setHours(0, 0, 0, 0));
+    case '24h':
+      timeFilter = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       break;
     case 'week':
       timeFilter = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
