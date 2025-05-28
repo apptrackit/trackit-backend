@@ -15,6 +15,10 @@ router.post('/updateUser', validateAdminApiKey, adminController.updateUser);
 router.post('/deleteUser', validateAdminApiKey, adminController.deleteUser);
 router.post('/createUser', validateAdminApiKey, adminController.createUser);
 
+//New stats endpoints
+router.get('/registrations', validateAdminApiKey, adminController.getRegistrations);
+router.get('/active-users', validateAdminApiKey, adminController.getActiveUsers);
+
 router.post('/login', (req, res) => {
   const { username, password } = req.body;
   
