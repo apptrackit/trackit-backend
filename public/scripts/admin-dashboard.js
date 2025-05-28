@@ -58,10 +58,15 @@ function setupEventListeners() {
 }
 
 async function loadDashboardData() {
-    await Promise.all([
-        fetchUserData(),
-        updateStats()
-    ]);
+    try {
+        await Promise.all([
+            fetchUserData(),
+            updateStats()
+        ]);
+    } catch (error) {
+        console.error('Error loading dashboard data:', error);
+        showError('Failed to load dashboard data');
+    }
 }
 
 async function fetchUserData() {
@@ -98,45 +103,31 @@ async function fetchUserData() {
 
 async function updateStats() {
     try {
-        const [usersResponse, emailsResponse] = await Promise.all([
-            fetch('/admin/getAllUserData', {
-                headers: { 'x-admin-api-key': localStorage.getItem('adminApiKey') }
-            }),
-            fetch('/admin/emails', {
-                headers: { 'x-admin-api-key': localStorage.getItem('adminApiKey') }
-            })
-        ]);
+        // Get total users count
+        const response = await fetch('/admin/getAllUserData', {
+            headers: { 'x-admin-api-key': localStorage.getItem('adminApiKey') }
+        });
 
-        const [usersData, emailsData] = await Promise.all([
-            usersResponse.json(),
-            emailsResponse.json()
-        ]);
-
-        const users = usersData.users || [];
+        const data = await response.json();
+        const users = data.users || [];
         
-        // Get total active sessions across all users
-        let totalSessions = 0;
-        for (const user of users) {
-            const sessionsResponse = await fetch('/auth/sessions', {
-                method: 'POST',
-                headers: {
-                    'x-api-key': localStorage.getItem('apiKey'),
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ userId: user.id })
-            });
-            
-            if (sessionsResponse.ok) {
-                const sessionsData = await sessionsResponse.json();
-                if (sessionsData.success && sessionsData.sessions) {
-                    totalSessions += sessionsData.sessions.length;
-                }
-            }
+        // Update total users count if element exists
+        const totalUsersElement = document.getElementById('total-users');
+        if (totalUsersElement) {
+            totalUsersElement.textContent = users.length;
         }
 
-        document.getElementById('total-users').textContent = users.length;
-        document.getElementById('active-sessions').textContent = totalSessions;
-        document.getElementById('total-emails').textContent = emailsData.emails?.length || 0;
+        // Update registration stats
+        const registrationsRange = document.getElementById('registrations-range');
+        if (registrationsRange) {
+            await updateRegistrations(registrationsRange.value || 'today');
+        }
+
+        // Update active users stats
+        const activeUsersRange = document.getElementById('active-users-range');
+        if (activeUsersRange) {
+            await updateActiveUsers(activeUsersRange.value || '24h');
+        }
     } catch (error) {
         console.error('Error updating stats:', error);
         showError('Failed to update statistics');
@@ -903,3 +894,72 @@ document.querySelectorAll('.modal').forEach(modal => {
         }
     });
 });
+
+// Function to update registration stats
+async function updateRegistrations(range) {
+    try {
+        const response = await fetch(`/admin/registrations?range=${range}`, {
+            headers: {
+                'x-admin-api-key': localStorage.getItem('adminApiKey')
+            }
+        });
+        const data = await response.json();
+        const element = document.getElementById('new-registrations');
+        if (element && data.success) {
+            element.textContent = data.count;
+        } else if (data.error) {
+            showNotification(data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error fetching registration stats:', error);
+        showNotification('Failed to fetch registration stats', 'error');
+    }
+}
+
+// Function to update active users stats
+async function updateActiveUsers(range) {
+    try {
+        const response = await fetch(`/admin/active-users?range=${range}`, {
+            headers: {
+                'x-admin-api-key': localStorage.getItem('adminApiKey')
+            }
+        });
+        const data = await response.json();
+        const element = document.getElementById('active-users');
+        if (element && data.success) {
+            element.textContent = data.count;
+        } else if (data.error) {
+            showNotification(data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error fetching active users stats:', error);
+        showNotification('Failed to fetch active users stats', 'error');
+    }
+}
+
+// Event listeners for timeframe selects
+document.addEventListener('DOMContentLoaded', function() {
+    const registrationsRange = document.getElementById('registrations-range');
+    const activeUsersRange = document.getElementById('active-users-range');
+
+    if (registrationsRange) {
+        registrationsRange.addEventListener('change', (e) => {
+            updateRegistrations(e.target.value);
+        });
+    }
+
+    if (activeUsersRange) {
+        activeUsersRange.addEventListener('change', (e) => {
+            updateActiveUsers(e.target.value);
+        });
+    }
+});
+
+// Initial load of stats
+function loadInitialStats() {
+    updateRegistrations('today');
+    updateActiveUsers('24h');
+    // ... existing initial load functions ...
+}
+
+// ... existing code ...

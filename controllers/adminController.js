@@ -213,3 +213,86 @@ exports.createUser = (req, res) => {
     });
   });
 };
+// ... existing code ...
+
+exports.getActiveUsers = (req, res) => {
+  const { range } = req.query;
+  let timeFilter;
+  
+  const now = new Date();
+  switch(range) {
+    case '24h':
+      timeFilter = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      break;
+    case 'week':
+      timeFilter = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case 'month':
+      timeFilter = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      break;
+    case 'year':
+      timeFilter = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+      break;
+    default:
+      return res.status(400).json({ success: false, error: 'Invalid range parameter' });
+  }
+
+  const sql = `
+    SELECT COUNT(DISTINCT user_id) as count 
+    FROM sessions 
+    WHERE datetime(last_check_at) >= datetime(?)
+  `;
+
+  db.get(sql, [timeFilter.toISOString()], (err, row) => {
+    if (err) {
+      console.error('Error getting active users:', err.message);
+      return res.status(500).json({ success: false, error: 'Database error' });
+    }
+    res.json({
+      success: true,
+      count: row ? row.count : 0,
+      range: range
+    });
+  });
+};
+
+exports.getRegistrations = (req, res) => {
+  const { range } = req.query;
+  let timeFilter;
+  
+  const now = new Date();
+  switch(range) {
+    case 'today':
+      timeFilter = new Date(now.setHours(0, 0, 0, 0));
+      break;
+    case 'week':
+      timeFilter = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case 'month':
+      timeFilter = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      break;
+    case 'year':
+      timeFilter = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+      break;
+    default:
+      return res.status(400).json({ success: false, error: 'Invalid range parameter' });
+  }
+
+  const sql = `
+    SELECT COUNT(*) as count 
+    FROM users 
+    WHERE datetime(created_at) >= datetime(?)
+  `;
+
+  db.get(sql, [timeFilter.toISOString()], (err, row) => {
+    if (err) {
+      console.error('Error getting registrations:', err.message);
+      return res.status(500).json({ success: false, error: 'Database error' });
+    }
+    res.json({
+      success: true,
+      count: row ? row.count : 0,
+      range: range
+    });
+  });
+};

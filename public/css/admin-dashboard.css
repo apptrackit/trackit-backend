@@ -55,32 +55,57 @@ body {
 
 .stat-card {
     background-color: #2d3748;
+    position: relative;
     padding: 1.5rem;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 1rem;
+    min-width: 250px;
 }
 
 .stat-card i {
     font-size: 2rem;
     color: #63b3ed;
 }
+.stat-info {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
 
 .stat-info h3 {
-    font-size: 0.875rem;
     color: #a0aec0;
     margin-bottom: 0.25rem;
+    margin: 0;
+    font-size: 1rem;
 }
 
 .stat-info p {
+    margin: 0;
     font-size: 1.5rem;
     font-weight: 600;
     color: #e2e8f0;
 }
 
 /* Search Section */
+.small-icon {
+    font-size: 1.5em !important;
+    margin-bottom: 0.5rem;
+}
+
+.timeframe-select {
+    margin-top: 0.5rem;
+    padding: 0.25rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: white;
+    font-size: 0.8rem;
+    width: 100%;
+    max-width: 150px;
+}
 .search-section {
     margin-bottom: 2rem;
 }

@@ -33,17 +33,29 @@
                     </div>
                 </div>
                 <div class="stat-card">
-                    <i class="fas fa-clock"></i>
+                    <i class="fas fa-user-plus small-icon"></i>
                     <div class="stat-info">
-                        <h3>Active Sessions</h3>
-                        <p id="active-sessions">Loading...</p>
+                        <h3>New Registrations</h3>
+                        <p id="new-registrations">Loading...</p>
+                        <select class="timeframe-select" id="registrations-range">
+                            <option value="today">Today</option>
+                            <option value="week">This Week</option>
+                            <option value="month">This Month</option>
+                            <option value="year">This Year</option>
+                        </select>
                     </div>
                 </div>
                 <div class="stat-card">
-                    <i class="fas fa-envelope"></i>
+                    <i class="fas fa-user-clock small-icon"></i>
                     <div class="stat-info">
-                        <h3>Total Emails</h3>
-                        <p id="total-emails">Loading...</p>
+                        <h3>Active Users</h3>
+                        <p id="active-users">Loading...</p>
+                        <select class="timeframe-select" id="active-users-range">
+                            <option value="24h">Past 24h</option>
+                            <option value="week">This Week</option>
+                            <option value="month">This Month</option>
+                            <option value="year">This Year</option>
+                        </select>
                     </div>
                 </div>
             </div>
