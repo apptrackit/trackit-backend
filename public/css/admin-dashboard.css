@@ -112,7 +112,7 @@ body {
 
 .timeframe-buttons {
     display: flex;
-    background-color: #1a1a1a;
+    background-color: rgba(99, 179, 237, 0.1);
     border-radius: 20px;
     padding: 4px;
     gap: 2px;
@@ -121,21 +121,22 @@ body {
 .timeframe-btn {
     background: none;
     border: none;
-    color: #808080;
+    color: #63b3ed;
     padding: 4px 12px;
     font-size: 0.875rem;
-    border-radius: 16px;
+    border-radius: 20px;
     cursor: pointer;
     transition: all 0.2s ease;
+    font-weight: 600;
 }
 
 .timeframe-btn:hover {
-    color: #fff;
+    background-color: rgba(99, 179, 237, 0.2);
 }
 
 .timeframe-btn.active {
-    background-color: #404040;
-    color: #fff;
+    background-color: rgba(99, 179, 237, 0.2);
+    color: #63b3ed;
 }
 
 /* Search Section */
