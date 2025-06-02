@@ -966,5 +966,3 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeTimeframeButtons();
     loadDashboardData();
 });
-
-// ... rest of existing code ...
