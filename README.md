@@ -448,6 +448,26 @@ The JWT token contains:
   }
   ```
 
+#### Get All User Data
+
+- **URL**: `/admin/getAllUserData`
+- **Method**: GET
+- **Headers**:
+  - `x-admin-api-key: your_admin_api_key`
+- **Success Response**: 
+  ```json
+  {
+    "success": true,
+    "users": [
+      {
+        "id": 1,
+        "username": "johndoe",
+        "email": "john@example.com"
+      }
+    ]
+  }
+  ```
+
 #### Get All Emails
 
 - **URL**: `/admin/emails`
@@ -461,6 +481,141 @@ The JWT token contains:
     "emails": ["user1@example.com", "user2@example.com"]
   }
   ```
+
+#### Update User
+
+- **URL**: `/admin/updateUser`
+- **Method**: POST
+- **Headers**:
+  - `x-admin-api-key: your_admin_api_key`
+- **Body**:
+  ```json
+  {
+    "id": 1,
+    "username": "newusername",
+    "email": "newemail@example.com",
+    "password": "newpassword"
+  }
+  ```
+- **Success Response**: 
+  ```json
+  {
+    "success": true,
+    "message": "User updated successfully",
+    "changes": 1
+  }
+  ```
+
+#### Delete User
+
+- **URL**: `/admin/deleteUser`
+- **Method**: POST
+- **Headers**:
+  - `x-admin-api-key: your_admin_api_key`
+- **Body**:
+  ```json
+  {
+    "id": 1
+  }
+  ```
+- **Success Response**: 
+  ```json
+  {
+    "success": true,
+    "message": "User deleted successfully",
+    "changes": 1
+  }
+  ```
+
+#### Create User
+
+- **URL**: `/admin/createUser`
+- **Method**: POST
+- **Headers**:
+  - `x-admin-api-key: your_admin_api_key`
+- **Body**:
+  ```json
+  {
+    "username": "newuser",
+    "email": "newuser@example.com",
+    "password": "password123"
+  }
+  ```
+- **Success Response**: 
+  ```json
+  {
+    "success": true,
+    "message": "User created successfully",
+    "userId": 1
+  }
+  ```
+
+#### Get Registrations Stats
+
+- **URL**: `/admin/registrations`
+- **Method**: GET
+- **Headers**:
+  - `x-admin-api-key: your_admin_api_key`
+- **Query Parameters**:
+  - `range`: One of: "24h", "week", "month", "year"
+- **Success Response**: 
+  ```json
+  {
+    "success": true,
+    "count": 10,
+    "range": "week"
+  }
+  ```
+
+#### Get Active Users Stats
+
+- **URL**: `/admin/active-users`
+- **Method**: GET
+- **Headers**:
+  - `x-admin-api-key: your_admin_api_key`
+- **Query Parameters**:
+  - `range`: One of: "24h", "week", "month", "year"
+- **Success Response**: 
+  ```json
+  {
+    "success": true,
+    "count": 5,
+    "range": "24h"
+  }
+  ```
+
+#### Get Hardware Information
+
+- **URL**: `/admin/hardwareinfo`
+- **Method**: GET
+- **Headers**:
+  - `x-admin-api-key: your_admin_api_key`
+- **Success Response**: 
+  ```json
+  {
+    "success": true,
+    "hardware": {
+      "temperature": {
+        "value": 55.55,
+        "color": "green"
+      },
+      "fanSpeed": {
+        "value": 4123,
+        "color": "red"
+      },
+      "uptime": "1 week, 1 day, 3 hours, 17 minutes"
+    }
+  }
+  ```
+- **Color Coding**:
+  - Temperature:
+    - Red: >70°C
+    - Green: 40-70°C
+    - Blue: <40°C
+  - Fan Speed:
+    - Red: >3000 RPM
+    - Green: 1500-3000 RPM
+    - Blue: <1500 RPM
 
 ## Session Management
 

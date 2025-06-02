@@ -967,4 +967,104 @@ document.addEventListener('DOMContentLoaded', () => {
     loadDashboardData();
 });
 
-// ... rest of existing code ...
+// Function to update hardware information
+async function updateHardwareInfo() {
+    try {
+        const response = await fetch('/admin/hardwareinfo', {
+            headers: {
+                'x-admin-api-key': localStorage.getItem('adminApiKey')
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch hardware info');
+        }
+
+        const data = await response.json();
+        if (data.success) {
+            const { temperature, fanSpeed, uptime } = data.hardware;
+
+            // Update CPU temperature
+            const cpuTempElement = document.getElementById('cpu-temp');
+            cpuTempElement.textContent = `${temperature.value}°C`;
+            cpuTempElement.className = 'hardware-value temp-' + temperature.color;
+
+            // Update fan speed
+            const fanSpeedElement = document.getElementById('fan-speed');
+            fanSpeedElement.textContent = `${fanSpeed.value} RPM`;
+            fanSpeedElement.className = 'hardware-value fan-' + fanSpeed.color;
+
+            // Format and update uptime
+            const uptimeElement = document.getElementById('server-uptime');
+            const uptimeParts = uptime.split(', ');
+            let totalDays = 0;
+            let hours = 0;
+            let minutes = 0;
+
+            uptimeParts.forEach(part => {
+                const [value, unit] = part.split(' ');
+                const numValue = parseInt(value);
+
+                switch(unit) {
+                    case 'year':
+                    case 'years':
+                        totalDays += numValue * 365;
+                        break;
+                    case 'month':
+                    case 'months':
+                        totalDays += numValue * 30; // Using 30 days as an average month
+                        break;
+                    case 'week':
+                    case 'weeks':
+                        totalDays += numValue * 7;
+                        break;
+                    case 'day':
+                    case 'days':
+                        totalDays += numValue;
+                        break;
+                    case 'hour':
+                    case 'hours':
+                        hours = numValue;
+                        break;
+                    case 'minute':
+                    case 'minutes':
+                        minutes = numValue;
+                        break;
+                }
+            });
+
+            // Format the numbers to ensure they're always two digits
+            const formatNumber = (num) => num.toString().padStart(2, '0');
+            
+            formattedUptime = `
+                <div class="uptime-container">
+                    <div class="uptime-value">
+                        <span class="uptime-number">${totalDays}</span>
+                        <span class="uptime-label">days</span>
+                    </div>
+                    <div class="uptime-separator">:</div>
+                    <div class="uptime-value">
+                        <span class="uptime-number">${formatNumber(hours)}</span>
+                        <span class="uptime-label">hours</span>
+                    </div>
+                    <div class="uptime-separator">:</div>
+                    <div class="uptime-value">
+                        <span class="uptime-number">${formatNumber(minutes)}</span>
+                        <span class="uptime-label">min</span>
+                    </div>
+                </div>
+            `;
+            
+            uptimeElement.innerHTML = formattedUptime;
+        }
+    } catch (error) {
+        console.error('Error updating hardware info:', error);
+        showNotification('Failed to update hardware information', 'error');
+    }
+}
+
+// Initial hardware info update
+updateHardwareInfo();
+
+// Update hardware info every minute
+setInterval(updateHardwareInfo, 60000);

@@ -617,3 +617,163 @@ body.modal-open {
 #logout-all-btn:hover {
     background-color: rgba(229, 62, 62, 0.2);
 }
+
+/* Hardware Info Card Styles */
+.hardware-section {
+    margin-bottom: 2rem;
+}
+
+.hardware-card {
+    width: 100%;
+    min-width: unset;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.hardware-card .stat-icon {
+    margin: 0;
+    flex-shrink: 0;
+}
+
+.hardware-card .stat-info {
+    flex-grow: 1;
+}
+
+.hardware-info {
+    display: flex;
+    flex-direction: row;
+    gap: 2rem;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+
+.hardware-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background-color: rgba(99, 179, 237, 0.05);
+    border-radius: 6px;
+    min-width: 150px;
+    justify-content: center;
+}
+
+.hardware-label {
+    color: #a0aec0;
+    font-size: 0.875rem;
+}
+
+.hardware-value {
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    background-color: rgba(99, 179, 237, 0.1);
+}
+
+/* Temperature Colors */
+.hardware-value.temp-red {
+    color: #fc8181;
+    background-color: rgba(252, 129, 129, 0.1);
+}
+
+.hardware-value.temp-green {
+    color: #68d391;
+    background-color: rgba(104, 211, 145, 0.1);
+}
+
+.hardware-value.temp-blue {
+    color: #63b3ed;
+    background-color: rgba(99, 179, 237, 0.1);
+}
+
+/* Fan Speed Colors */
+.hardware-value.fan-red {
+    color: #fc8181;
+    background-color: rgba(252, 129, 129, 0.1);
+}
+
+.hardware-value.fan-green {
+    color: #68d391;
+    background-color: rgba(104, 211, 145, 0.1);
+}
+
+.hardware-value.fan-blue {
+    color: #63b3ed;
+    background-color: rgba(99, 179, 237, 0.1);
+}
+
+/* Update hardware item styles for uptime */
+.hardware-item:has(.uptime-container) {
+    background: none;
+    padding: 0;
+    min-width: 300px;
+}
+
+.hardware-item:has(.uptime-container) .hardware-value {
+    background: none;
+    padding: 0;
+}
+
+@media (max-width: 768px) {
+    .hardware-card {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .hardware-info {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .hardware-item {
+        width: 100%;
+        min-width: unset;
+    }
+
+    .hardware-item:has(.uptime-container) {
+        min-width: unset;
+    }
+}
+
+/* Uptime Styles */
+.uptime-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: linear-gradient(135deg, rgba(99, 179, 237, 0.1), rgba(99, 179, 237, 0.05));
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: 1px solid rgba(99, 179, 237, 0.2);
+}
+
+.uptime-value {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 60px;
+}
+
+.uptime-number {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #63b3ed;
+    font-family: 'SF Mono', 'Consolas', monospace;
+}
+
+.uptime-label {
+    font-size: 0.75rem;
+    color: #a0aec0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.uptime-separator {
+    color: #63b3ed;
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0 0.25rem;
+    opacity: 0.5;
+}

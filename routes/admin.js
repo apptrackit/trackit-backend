@@ -54,4 +54,7 @@ router.post('/check', (req, res) => {
   }
 });
 
+// Hardware information endpoint
+router.get('/hardwareinfo', validateAdminApiKey, adminController.getHardwareInfo);
+
 module.exports = router;
