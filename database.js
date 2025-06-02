@@ -16,7 +16,8 @@ const db = new sqlite3.Database(dbPath, (err) => {
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE,
     email TEXT NOT NULL,
-    password TEXT NOT NULL
+    password TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`, (err) => {
     if (err) {
       console.error('Error creating users table:', err.message);
@@ -35,6 +36,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
     refresh_token_expires_at TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     last_refresh_at TEXT,
+    last_check_at TEXT,
     refresh_count INTEGER DEFAULT 0,
     FOREIGN KEY (user_id) REFERENCES users(id),
     UNIQUE(user_id, device_id)

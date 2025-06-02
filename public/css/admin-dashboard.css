@@ -55,32 +55,96 @@ body {
 
 .stat-card {
     background-color: #2d3748;
+    position: relative;
     padding: 1.5rem;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    min-width: 250px;
+}
+
+.stat-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(99, 179, 237, 0.1);
+    border-radius: 8px;
+}
+
+.stat-icon i {
+    font-size: 1.5rem;
+    color: #63b3ed;
+}
+
+.stat-info {
+    flex-grow: 1;
+}
+
+.stat-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.stat-info h3 {
+    color: #a0aec0;
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin: 0;
+}
+
+.stat-value {
     display: flex;
     align-items: center;
     gap: 1rem;
 }
 
-.stat-card i {
-    font-size: 2rem;
-    color: #63b3ed;
-}
-
-.stat-info h3 {
-    font-size: 0.875rem;
-    color: #a0aec0;
-    margin-bottom: 0.25rem;
-}
-
 .stat-info p {
+    margin: 0;
     font-size: 1.5rem;
     font-weight: 600;
     color: #e2e8f0;
 }
 
+.timeframe-buttons {
+    display: flex;
+    background-color: rgba(99, 179, 237, 0.1);
+    border-radius: 20px;
+    padding: 4px;
+    gap: 2px;
+}
+
+.timeframe-btn {
+    background: none;
+    border: none;
+    color: #63b3ed;
+    padding: 4px 12px;
+    font-size: 0.875rem;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 600;
+}
+
+.timeframe-btn:hover {
+    background-color: rgba(99, 179, 237, 0.2);
+}
+
+.timeframe-btn.active {
+    background-color: rgba(99, 179, 237, 0.2);
+    color: #63b3ed;
+}
+
 /* Search Section */
+.small-icon {
+    font-size: 1.5em !important;
+    margin-bottom: 0.5rem;
+}
+
 .search-section {
     margin-bottom: 2rem;
 }

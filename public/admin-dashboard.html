@@ -26,24 +26,50 @@
         <div class="dashboard-content">
             <div class="stats-section">
                 <div class="stat-card">
-                    <i class="fas fa-users"></i>
+                    <div class="stat-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
                     <div class="stat-info">
                         <h3>Total Users</h3>
                         <p id="total-users">Loading...</p>
                     </div>
                 </div>
                 <div class="stat-card">
-                    <i class="fas fa-clock"></i>
+                    <div class="stat-icon">
+                        <i class="fas fa-user-plus"></i>
+                    </div>
                     <div class="stat-info">
-                        <h3>Active Sessions</h3>
-                        <p id="active-sessions">Loading...</p>
+                        <div class="stat-header">
+                            <h3>New Registrations</h3>
+                            <div class="stat-value">
+                                <p id="new-registrations">Loading...</p>
+                                <div class="timeframe-buttons" id="registrations-range">
+                                    <button class="timeframe-btn active" data-value="24h">24H</button>
+                                    <button class="timeframe-btn" data-value="week">W</button>
+                                    <button class="timeframe-btn" data-value="month">M</button>
+                                    <button class="timeframe-btn" data-value="year">Y</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="stat-card">
-                    <i class="fas fa-envelope"></i>
+                    <div class="stat-icon">
+                        <i class="fas fa-user-clock"></i>
+                    </div>
                     <div class="stat-info">
-                        <h3>Total Emails</h3>
-                        <p id="total-emails">Loading...</p>
+                        <div class="stat-header">
+                            <h3>Active Users</h3>
+                            <div class="stat-value">
+                                <p id="active-users">Loading...</p>
+                                <div class="timeframe-buttons" id="active-users-range">
+                                    <button class="timeframe-btn active" data-value="24h">24H</button>
+                                    <button class="timeframe-btn" data-value="week">W</button>
+                                    <button class="timeframe-btn" data-value="month">M</button>
+                                    <button class="timeframe-btn" data-value="year">Y</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
