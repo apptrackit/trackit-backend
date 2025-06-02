@@ -2,6 +2,9 @@ const db = require('../database');
 const bcrypt = require('bcrypt');
 require('dotenv').config();
 const saltRounds = parseInt(process.env.SALT_ROUNDS);
+const { exec } = require('child_process');
+const util = require('util');
+const execPromise = util.promisify(exec);
 
 exports.getAllUserData = (req, res) => {
 
@@ -295,4 +298,65 @@ exports.getRegistrations = (req, res) => {
       range: range
     });
   });
+};
+
+exports.getHardwareInfo = async (req, res) => {
+  try {
+    // Get temperature and fan speed
+    const { stdout: sensorsOutput } = await execPromise('sensors');
+    const tempFanMatch = sensorsOutput.match(/temp1.*?\+(\d+\.\d+)°C.*?fan1.*?(\d+)\s+RPM/s);
+    
+    let temp = 0;
+    let fan = 0;
+    
+    if (tempFanMatch) {
+      temp = parseFloat(tempFanMatch[1]);
+      fan = parseInt(tempFanMatch[2]);
+    }
+
+    // Get uptime
+    const { stdout: uptimeOutput } = await execPromise('uptime -p');
+    const uptime = uptimeOutput.trim().replace('up ', '');
+
+    // Determine temperature color
+    let tempColor;
+    if (temp > 70) {
+      tempColor = 'red';
+    } else if (temp >= 40) {
+      tempColor = 'green';
+    } else {
+      tempColor = 'blue';
+    }
+
+    // Determine fan speed color
+    let fanColor;
+    if (fan > 3000) {
+      fanColor = 'red';
+    } else if (fan >= 1500) {
+      fanColor = 'green';
+    } else {
+      fanColor = 'blue';
+    }
+
+    res.json({
+      success: true,
+      hardware: {
+        temperature: {
+          value: temp,
+          color: tempColor
+        },
+        fanSpeed: {
+          value: fan,
+          color: fanColor
+        },
+        uptime: uptime
+      }
+    });
+  } catch (error) {
+    console.error('Error getting hardware info:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get hardware information'
+    });
+  }
 };
