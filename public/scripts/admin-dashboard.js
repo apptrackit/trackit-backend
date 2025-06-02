@@ -997,32 +997,63 @@ async function updateHardwareInfo() {
             // Format and update uptime
             const uptimeElement = document.getElementById('server-uptime');
             const uptimeParts = uptime.split(', ');
-            let formattedUptime = '';
+            let totalDays = 0;
+            let hours = 0;
+            let minutes = 0;
+
+            uptimeParts.forEach(part => {
+                const [value, unit] = part.split(' ');
+                const numValue = parseInt(value);
+
+                switch(unit) {
+                    case 'year':
+                    case 'years':
+                        totalDays += numValue * 365;
+                        break;
+                    case 'month':
+                    case 'months':
+                        totalDays += numValue * 30; // Using 30 days as an average month
+                        break;
+                    case 'week':
+                    case 'weeks':
+                        totalDays += numValue * 7;
+                        break;
+                    case 'day':
+                    case 'days':
+                        totalDays += numValue;
+                        break;
+                    case 'hour':
+                    case 'hours':
+                        hours = numValue;
+                        break;
+                    case 'minute':
+                    case 'minutes':
+                        minutes = numValue;
+                        break;
+                }
+            });
+
+            // Format the numbers to ensure they're always two digits
+            const formatNumber = (num) => num.toString().padStart(2, '0');
             
-            if (uptimeParts.length > 0) {
-                const days = uptimeParts[0].split(' ')[0];
-                const hours = uptimeParts[1] ? uptimeParts[1].split(' ')[0] : '0';
-                const minutes = uptimeParts[2] ? uptimeParts[2].split(' ')[0] : '0';
-                
-                formattedUptime = `
-                    <div class="uptime-container">
-                        <div class="uptime-value">
-                            <span class="uptime-number">${days}</span>
-                            <span class="uptime-label">days</span>
-                        </div>
-                        <div class="uptime-separator">:</div>
-                        <div class="uptime-value">
-                            <span class="uptime-number">${hours}</span>
-                            <span class="uptime-label">hours</span>
-                        </div>
-                        <div class="uptime-separator">:</div>
-                        <div class="uptime-value">
-                            <span class="uptime-number">${minutes}</span>
-                            <span class="uptime-label">min</span>
-                        </div>
+            formattedUptime = `
+                <div class="uptime-container">
+                    <div class="uptime-value">
+                        <span class="uptime-number">${totalDays}</span>
+                        <span class="uptime-label">days</span>
                     </div>
-                `;
-            }
+                    <div class="uptime-separator">:</div>
+                    <div class="uptime-value">
+                        <span class="uptime-number">${formatNumber(hours)}</span>
+                        <span class="uptime-label">hours</span>
+                    </div>
+                    <div class="uptime-separator">:</div>
+                    <div class="uptime-value">
+                        <span class="uptime-number">${formatNumber(minutes)}</span>
+                        <span class="uptime-label">min</span>
+                    </div>
+                </div>
+            `;
             
             uptimeElement.innerHTML = formattedUptime;
         }
