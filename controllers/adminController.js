@@ -304,14 +304,19 @@ exports.getHardwareInfo = async (req, res) => {
   try {
     // Get temperature and fan speed
     const { stdout: sensorsOutput } = await execPromise('sensors');
-    const tempFanMatch = sensorsOutput.match(/temp1.*?\+(\d+\.\d+)°C.*?fan1.*?(\d+)\s+RPM/s);
     
+    // Parse temperature - looking for any temperature sensor
+    const tempMatch = sensorsOutput.match(/Core\s+\d+:\s+\+(\d+\.\d+)°C/);
     let temp = 0;
+    if (tempMatch) {
+      temp = parseFloat(tempMatch[1]);
+    }
+
+    // Parse fan speed - looking for any fan sensor
+    const fanMatch = sensorsOutput.match(/fan\d+:\s+(\d+)\s+RPM/);
     let fan = 0;
-    
-    if (tempFanMatch) {
-      temp = parseFloat(tempFanMatch[1]);
-      fan = parseInt(tempFanMatch[2]);
+    if (fanMatch) {
+      fan = parseInt(fanMatch[1]);
     }
 
     // Get uptime
@@ -320,8 +325,10 @@ exports.getHardwareInfo = async (req, res) => {
 
     // Determine temperature color
     let tempColor;
-    if (temp > 70) {
+    if (temp >= 80) {
       tempColor = 'red';
+    } else if (temp >= 60) {
+      tempColor = 'orange';
     } else if (temp >= 40) {
       tempColor = 'green';
     } else {
@@ -330,20 +337,26 @@ exports.getHardwareInfo = async (req, res) => {
 
     // Determine fan speed color
     let fanColor;
-    if (fan > 3000) {
+    if (fan >= 4000) {
       fanColor = 'red';
+    } else if (fan >= 2500) {
+      fanColor = 'orange';
     } else if (fan >= 1500) {
       fanColor = 'green';
     } else {
       fanColor = 'blue';
     }
 
+    // Log the raw sensor output for debugging
+    console.log('Raw sensors output:', sensorsOutput);
+
     res.json({
       success: true,
       hardware: {
         temperature: {
           value: temp,
-          color: tempColor
+          color: tempColor,
+          raw: sensorsOutput // Including raw output for debugging
         },
         fanSpeed: {
           value: fan,
@@ -356,7 +369,8 @@ exports.getHardwareInfo = async (req, res) => {
     console.error('Error getting hardware info:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to get hardware information'
+      error: 'Failed to get hardware information',
+      details: error.message
     });
   }
 };
