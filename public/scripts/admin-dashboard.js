@@ -966,3 +966,45 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeTimeframeButtons();
     loadDashboardData();
 });
+
+// Function to update hardware information
+async function updateHardwareInfo() {
+    try {
+        const response = await fetch('/admin/hardwareinfo', {
+            headers: {
+                'x-admin-api-key': localStorage.getItem('adminApiKey')
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch hardware info');
+        }
+
+        const data = await response.json();
+        if (data.success) {
+            const { temperature, fanSpeed, uptime } = data.hardware;
+
+            // Update CPU temperature
+            const cpuTempElement = document.getElementById('cpu-temp');
+            cpuTempElement.textContent = `${temperature.value}°C`;
+            cpuTempElement.className = 'hardware-value temp-' + temperature.color;
+
+            // Update fan speed
+            const fanSpeedElement = document.getElementById('fan-speed');
+            fanSpeedElement.textContent = `${fanSpeed.value} RPM`;
+            fanSpeedElement.className = 'hardware-value fan-' + fanSpeed.color;
+
+            // Update uptime
+            document.getElementById('server-uptime').textContent = uptime;
+        }
+    } catch (error) {
+        console.error('Error updating hardware info:', error);
+        showNotification('Failed to update hardware information', 'error');
+    }
+}
+
+// Initial hardware info update
+updateHardwareInfo();
+
+// Update hardware info every minute
+setInterval(updateHardwareInfo, 60000);

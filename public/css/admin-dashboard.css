@@ -617,3 +617,67 @@ body.modal-open {
 #logout-all-btn:hover {
     background-color: rgba(229, 62, 62, 0.2);
 }
+
+/* Hardware Info Card Styles */
+.hardware-card {
+    min-width: 300px;
+}
+
+.hardware-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.hardware-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.25rem 0;
+}
+
+.hardware-label {
+    color: #a0aec0;
+    font-size: 0.875rem;
+}
+
+.hardware-value {
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    background-color: rgba(99, 179, 237, 0.1);
+}
+
+/* Temperature Colors */
+.hardware-value.temp-red {
+    color: #fc8181;
+    background-color: rgba(252, 129, 129, 0.1);
+}
+
+.hardware-value.temp-green {
+    color: #68d391;
+    background-color: rgba(104, 211, 145, 0.1);
+}
+
+.hardware-value.temp-blue {
+    color: #63b3ed;
+    background-color: rgba(99, 179, 237, 0.1);
+}
+
+/* Fan Speed Colors */
+.hardware-value.fan-red {
+    color: #fc8181;
+    background-color: rgba(252, 129, 129, 0.1);
+}
+
+.hardware-value.fan-green {
+    color: #68d391;
+    background-color: rgba(104, 211, 145, 0.1);
+}
+
+.hardware-value.fan-blue {
+    color: #63b3ed;
+    background-color: rgba(99, 179, 237, 0.1);
+}
