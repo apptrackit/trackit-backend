@@ -626,13 +626,24 @@ body.modal-open {
 .hardware-card {
     width: 100%;
     min-width: unset;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.hardware-card .stat-icon {
+    margin: 0;
+    flex-shrink: 0;
+}
+
+.hardware-card .stat-info {
+    flex-grow: 1;
 }
 
 .hardware-info {
     display: flex;
     flex-direction: row;
     gap: 2rem;
-    margin-top: 0.5rem;
     justify-content: center;
     align-items: center;
     width: 100%;
@@ -707,6 +718,11 @@ body.modal-open {
 }
 
 @media (max-width: 768px) {
+    .hardware-card {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
     .hardware-info {
         flex-direction: column;
         gap: 0.5rem;
