@@ -633,7 +633,9 @@ body.modal-open {
     flex-direction: row;
     gap: 2rem;
     margin-top: 0.5rem;
-    justify-content: flex-start;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
 }
 
 .hardware-item {
@@ -643,6 +645,8 @@ body.modal-open {
     padding: 0.5rem 1rem;
     background-color: rgba(99, 179, 237, 0.05);
     border-radius: 6px;
+    min-width: 150px;
+    justify-content: center;
 }
 
 .hardware-label {
@@ -690,6 +694,18 @@ body.modal-open {
     background-color: rgba(99, 179, 237, 0.1);
 }
 
+/* Update hardware item styles for uptime */
+.hardware-item:has(.uptime-container) {
+    background: none;
+    padding: 0;
+    min-width: 300px;
+}
+
+.hardware-item:has(.uptime-container) .hardware-value {
+    background: none;
+    padding: 0;
+}
+
 @media (max-width: 768px) {
     .hardware-info {
         flex-direction: column;
@@ -698,6 +714,11 @@ body.modal-open {
     
     .hardware-item {
         width: 100%;
+        min-width: unset;
+    }
+
+    .hardware-item:has(.uptime-container) {
+        min-width: unset;
     }
 }
 
@@ -739,26 +760,4 @@ body.modal-open {
     font-weight: 600;
     margin: 0 0.25rem;
     opacity: 0.5;
-}
-
-/* Update hardware item styles for uptime */
-.hardware-item:has(.uptime-container) {
-    background: none;
-    padding: 0;
-}
-
-.hardware-item:has(.uptime-container) .hardware-value {
-    background: none;
-    padding: 0;
-}
-
-@media (max-width: 768px) {
-    .uptime-container {
-        width: 100%;
-        justify-content: center;
-    }
-    
-    .uptime-value {
-        min-width: 50px;
-    }
 }
