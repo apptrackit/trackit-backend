@@ -994,8 +994,37 @@ async function updateHardwareInfo() {
             fanSpeedElement.textContent = `${fanSpeed.value} RPM`;
             fanSpeedElement.className = 'hardware-value fan-' + fanSpeed.color;
 
-            // Update uptime
-            document.getElementById('server-uptime').textContent = uptime;
+            // Format and update uptime
+            const uptimeElement = document.getElementById('server-uptime');
+            const uptimeParts = uptime.split(', ');
+            let formattedUptime = '';
+            
+            if (uptimeParts.length > 0) {
+                const days = uptimeParts[0].split(' ')[0];
+                const hours = uptimeParts[1] ? uptimeParts[1].split(' ')[0] : '0';
+                const minutes = uptimeParts[2] ? uptimeParts[2].split(' ')[0] : '0';
+                
+                formattedUptime = `
+                    <div class="uptime-container">
+                        <div class="uptime-value">
+                            <span class="uptime-number">${days}</span>
+                            <span class="uptime-label">days</span>
+                        </div>
+                        <div class="uptime-separator">:</div>
+                        <div class="uptime-value">
+                            <span class="uptime-number">${hours}</span>
+                            <span class="uptime-label">hours</span>
+                        </div>
+                        <div class="uptime-separator">:</div>
+                        <div class="uptime-value">
+                            <span class="uptime-number">${minutes}</span>
+                            <span class="uptime-label">min</span>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            uptimeElement.innerHTML = formattedUptime;
         }
     } catch (error) {
         console.error('Error updating hardware info:', error);
