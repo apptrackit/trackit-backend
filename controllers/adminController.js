@@ -302,61 +302,54 @@ exports.getRegistrations = (req, res) => {
 
 exports.getHardwareInfo = async (req, res) => {
   try {
-    // Get temperature and fan speed
-    const { stdout: sensorsOutput } = await execPromise('sensors');
-    
-    // Parse temperature - looking for any temperature sensor
-    const tempMatch = sensorsOutput.match(/Core\s+\d+:\s+\+(\d+\.\d+)°C/);
-    let temp = 0;
-    if (tempMatch) {
-      temp = parseFloat(tempMatch[1]);
-    }
+    // Get temperature and fan speed using AWK
+    const { stdout: tempFanOutput } = await execPromise(`sensors | awk '
+      /temp1/ {
+          gsub(/[+°C]/, "", $2);
+          temps[++count] = $2
+      }
+      /fan1/ {
+          gsub(/RPM/, "", $3);
+          rpm = $2
+      }
+      END {
+          avg = (temps[1] + temps[2]) / 2;
+          printf "%.1f|%d", avg, rpm
+      }'`);
 
-    // Parse fan speed - looking for any fan sensor
-    const fanMatch = sensorsOutput.match(/fan\d+:\s+(\d+)\s+RPM/);
-    let fan = 0;
-    if (fanMatch) {
-      fan = parseInt(fanMatch[1]);
-    }
+    // Split the output into temperature and fan speed
+    const [temp, fan] = tempFanOutput.split('|').map(Number);
 
     // Get uptime
     const { stdout: uptimeOutput } = await execPromise('uptime -p');
     const uptime = uptimeOutput.trim().replace('up ', '');
 
-    // Determine temperature color
+    // Determine temperature color (Red: >70°C, Green: 40-70°C, Blue: <40°C)
     let tempColor;
-    if (temp >= 80) {
+    if (temp > 70) {
       tempColor = 'red';
-    } else if (temp >= 60) {
-      tempColor = 'orange';
     } else if (temp >= 40) {
       tempColor = 'green';
     } else {
       tempColor = 'blue';
     }
 
-    // Determine fan speed color
+    // Determine fan speed color (Red: >3000 RPM, Green: 1500-3000 RPM, Blue: <1500 RPM)
     let fanColor;
-    if (fan >= 4000) {
+    if (fan > 3000) {
       fanColor = 'red';
-    } else if (fan >= 2500) {
-      fanColor = 'orange';
     } else if (fan >= 1500) {
       fanColor = 'green';
     } else {
       fanColor = 'blue';
     }
 
-    // Log the raw sensor output for debugging
-    console.log('Raw sensors output:', sensorsOutput);
-
     res.json({
       success: true,
       hardware: {
         temperature: {
           value: temp,
-          color: tempColor,
-          raw: sensorsOutput // Including raw output for debugging
+          color: tempColor
         },
         fanSpeed: {
           value: fan,
