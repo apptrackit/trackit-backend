@@ -1,63 +1,54 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+const { Pool } = require('pg');
 require('dotenv').config();
 
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL, // e.g. postgres://user:password@host:port/database
+});
 
-const dbPath = process.env.DB_PATH;
+(async () => {
+  try {
+    const client = await pool.connect();
+    console.log('Connected to the PostgreSQL database');
 
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error('Error connecting to the database:', err.message);
-    return;
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username TEXT NOT NULL UNIQUE,
+        email TEXT NOT NULL,
+        password TEXT NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('Users table ready');
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS sessions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        device_id TEXT NOT NULL,
+        access_token TEXT NOT NULL,
+        refresh_token TEXT NOT NULL,
+        access_token_expires_at TIMESTAMP NOT NULL,
+        refresh_token_expires_at TIMESTAMP NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        last_refresh_at TIMESTAMP,
+        last_check_at TIMESTAMP,
+        refresh_count INTEGER DEFAULT 0,
+        UNIQUE(user_id, device_id)
+      );
+    `);
+    console.log('Sessions table ready');
+
+    client.release();
+  } catch (err) {
+    console.error('Database error:', err.message);
   }
-  console.log('Connected to the SQLite database at', dbPath);
-  
-  db.run(`CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT NOT NULL UNIQUE,
-    email TEXT NOT NULL,
-    password TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
-  )`, (err) => {
-    if (err) {
-      console.error('Error creating users table:', err.message);
-    } else {
-      console.log('Users table ready');
-    }
-  });
+})();
 
-  db.run(`CREATE TABLE IF NOT EXISTS sessions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    device_id TEXT NOT NULL,
-    access_token TEXT NOT NULL,
-    refresh_token TEXT NOT NULL,
-    access_token_expires_at TEXT NOT NULL,
-    refresh_token_expires_at TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    last_refresh_at TEXT,
-    last_check_at TEXT,
-    refresh_count INTEGER DEFAULT 0,
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    UNIQUE(user_id, device_id)
-  )`, (err) => {
-    if (err) {
-      console.error('Error creating sessions table:', err.message);
-    } else {
-      console.log('Sessions table ready');
-    }
-  });
+process.on('SIGINT', async () => {
+  await pool.end();
+  console.log('Database connection pool closed');
+  process.exit(0);
 });
 
-process.on('SIGINT', () => {
-  db.close((err) => {
-    if (err) {
-      console.error('Error closing the database:', err.message);
-    } else {
-      console.log('Database connection closed');
-    }
-    process.exit(0);
-  });
-});
-
-module.exports = db;
+module.exports = pool;
