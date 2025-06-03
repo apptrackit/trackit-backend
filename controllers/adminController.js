@@ -243,7 +243,7 @@ exports.getActiveUsers = (req, res) => {
   const sql = `
     SELECT COUNT(DISTINCT user_id) as count 
     FROM sessions 
-    WHERE datetime(last_check_at) >= datetime($1)
+    WHERE last_check_at >= $1
   `;
 
   db.query(sql, [timeFilter.toISOString()])
@@ -285,7 +285,7 @@ exports.getRegistrations = (req, res) => {
   const sql = `
     SELECT COUNT(*) as count 
     FROM users 
-    WHERE datetime(created_at) >= datetime($1)
+    WHERE created_at >= $1
   `;
 
   db.query(sql, [timeFilter.toISOString()])
