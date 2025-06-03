@@ -519,7 +519,7 @@ body.modal-open {
     border: 2px solid #4a5568;
     border-radius: 50%;
     border-top-color: #63b3ed;
-    animation: spin 1s linear infinite;
+    
 }
 
 .notification {
@@ -547,11 +547,7 @@ body.modal-open {
     border-left: 4px solid #63b3ed;
 }
 
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
+
 
 @media (max-width: 768px) {
     .dashboard-header {
@@ -671,6 +667,7 @@ body.modal-open {
     padding: 0.25rem 0.5rem;
     border-radius: 4px;
     background-color: rgba(99, 179, 237, 0.1);
+    white-space: nowrap;
 }
 
 /* Temperature Colors */
@@ -705,16 +702,12 @@ body.modal-open {
     background-color: rgba(99, 179, 237, 0.1);
 }
 
-/* Update hardware item styles for uptime */
-.hardware-item:has(.uptime-container) {
-    background: none;
-    padding: 0;
-    min-width: 300px;
-}
-
-.hardware-item:has(.uptime-container) .hardware-value {
-    background: none;
-    padding: 0;
+/* Uptime Colors */
+.hardware-value.uptime-blue {
+    color: #63b3ed;
+    background-color: rgba(99, 179, 237, 0.1);
+    display: inline-block;
+    white-space: nowrap;
 }
 
 @media (max-width: 768px) {
@@ -732,48 +725,4 @@ body.modal-open {
         width: 100%;
         min-width: unset;
     }
-
-    .hardware-item:has(.uptime-container) {
-        min-width: unset;
-    }
-}
-
-/* Uptime Styles */
-.uptime-container {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: linear-gradient(135deg, rgba(99, 179, 237, 0.1), rgba(99, 179, 237, 0.05));
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    border: 1px solid rgba(99, 179, 237, 0.2);
-}
-
-.uptime-value {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-width: 60px;
-}
-
-.uptime-number {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #63b3ed;
-    font-family: 'SF Mono', 'Consolas', monospace;
-}
-
-.uptime-label {
-    font-size: 0.75rem;
-    color: #a0aec0;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.uptime-separator {
-    color: #63b3ed;
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin: 0 0.25rem;
-    opacity: 0.5;
 }
