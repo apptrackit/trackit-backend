@@ -24,27 +24,22 @@ exports.register = async (req, res) => {
     const saltRounds = parseInt(process.env.SALT);
     const hashedPassword = await bcrypt.hash(password, saltRounds);
     
-    db.get('SELECT username FROM users WHERE username = ?', [username], (err, row) => {
-      if (err) {
-        console.error('Error checking username:', err.message);
-        return res.status(500).json({ success: false, error: 'Database error' });
-      }
-      
-      if (row) {
-        return res.status(409).json({ success: false, error: 'Username already exists' });
-      }
-      
-      db.run('INSERT INTO users (username, email, password) VALUES (?, ?, ?)', 
-        [username, email, hashedPassword], 
-        function(err) {
-          if (err) {
-            console.error('Error inserting into database:', err.message);
-            return res.status(500).json({ success: false, error: 'Database error' });
-          }
+    db.query('SELECT username FROM users WHERE username = $1', [username])
+      .then(result => {
+        if (result.rows.length > 0) {
+          return res.status(409).json({ success: false, error: 'Username already exists' });
+        }
+        
+        db.query(
+          'INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING id', 
+          [username, email, hashedPassword]
+        )
+        .then(result => {
+          const userId = result.rows[0].id;
 
           // Create access token (7 days)
           const accessToken = jwt.sign(
-            { userId: this.lastID, username: username, deviceId: generateDeviceId(req) },
+            { userId: userId, username: username, deviceId: generateDeviceId(req) },
             process.env.JWT_SECRET,
             { expiresIn: '7d' }
           );
@@ -62,34 +57,40 @@ exports.register = async (req, res) => {
           const deviceId = generateDeviceId(req);
 
           // Store session in database
-          db.run(
-            'INSERT INTO sessions (user_id, device_id, access_token, refresh_token, access_token_expires_at, refresh_token_expires_at) VALUES (?, ?, ?, ?, ?, ?)',
-            [this.lastID, deviceId, accessToken, refreshToken, accessTokenExpiresAt.toISOString(), refreshTokenExpiresAt.toISOString()],
-            function(err) {
-              if (err) {
-                console.error('Error creating session:', err);
-                return res.status(500).json({ success: false, error: 'Failed to create session' });
+          db.query(
+            'INSERT INTO sessions (user_id, device_id, access_token, refresh_token, access_token_expires_at, refresh_token_expires_at) VALUES ($1, $2, $3, $4, $5, $6)',
+            [userId, deviceId, accessToken, refreshToken, accessTokenExpiresAt.toISOString(), refreshTokenExpiresAt.toISOString()]
+          )
+          .then(() => {
+            res.status(201).json({ 
+              success: true, 
+              authenticated: true,
+              message: 'Registration successful',
+              accessToken: accessToken,
+              refreshToken: refreshToken,
+              apiKey: process.env.API_KEY,
+              deviceId: deviceId,
+              user: {
+                id: userId,
+                username: username,
+                email: email
               }
-
-              res.status(201).json({ 
-                success: true, 
-                authenticated: true,
-                message: 'Registration successful',
-                accessToken: accessToken,
-                refreshToken: refreshToken,
-                apiKey: process.env.API_KEY,
-                deviceId: deviceId,
-                user: {
-                  id: this.lastID,
-                  username: username,
-                  email: email
-                }
-              });
-            }
-          );
-        }
-      );
-    });
+            });
+          })
+          .catch(err => {
+            console.error('Error creating session:', err);
+            return res.status(500).json({ success: false, error: 'Failed to create session' });
+          });
+        })
+        .catch(err => {
+          console.error('Error inserting into database:', err.message);
+          return res.status(500).json({ success: false, error: 'Database error' });
+        });
+      })
+      .catch(err => {
+        console.error('Error checking username:', err.message);
+        return res.status(500).json({ success: false, error: 'Database error' });
+      });
   } catch (error) {
     console.error('Error hashing password:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });
@@ -104,42 +105,43 @@ exports.changePassword = async (req, res) => {
     return res.status(400).json({ success: false, error: 'Username, old password, and new password are required' });
   }
 
-  db.get('SELECT * FROM users WHERE username = ?', [username], async (err, user) => {
-    if (err) {
-      console.error('Error querying database:', err.message);
-      return res.status(500).json({ success: false, error: 'Database error' });
-    }
-    
-    if (!user) {
-      return res.status(404).json({ success: false, error: 'User not found' });
-    }
-    
-    try {
-      const isOldPasswordValid = await bcrypt.compare(oldPassword, user.password);
-      
-      if (!isOldPasswordValid) {
-        return res.status(401).json({ success: false, error: 'Current password is incorrect' });
+  db.query('SELECT * FROM users WHERE username = $1', [username])
+    .then(async result => {
+      const user = result.rows[0];
+      if (!user) {
+        return res.status(404).json({ success: false, error: 'User not found' });
       }
       
-      const saltRounds = parseInt(process.env.SALT);
-      const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
-      
-      db.run('UPDATE users SET password = ? WHERE username = ?', 
-        [hashedNewPassword, username], 
-        function(err) {
-          if (err) {
-            console.error('Error updating password:', err.message);
-            return res.status(500).json({ success: false, error: 'Database error' });
-          }
-          
-          res.json({ success: true, message: 'Password updated successfully' });
+      try {
+        const isOldPasswordValid = await bcrypt.compare(oldPassword, user.password);
+        
+        if (!isOldPasswordValid) {
+          return res.status(401).json({ success: false, error: 'Current password is incorrect' });
         }
-      );
-    } catch (error) {
-      console.error('Error processing password change:', error);
-      res.status(500).json({ success: false, error: 'Internal server error' });
-    }
-  });
+        
+        const saltRounds = parseInt(process.env.SALT);
+        const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
+        
+        db.query(
+          'UPDATE users SET password = $1 WHERE username = $2', 
+          [hashedNewPassword, username]
+        )
+        .then(() => {
+          res.json({ success: true, message: 'Password updated successfully' });
+        })
+        .catch(err => {
+          console.error('Error updating password:', err.message);
+          return res.status(500).json({ success: false, error: 'Database error' });
+        });
+      } catch (error) {
+        console.error('Error processing password change:', error);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+      }
+    })
+    .catch(err => {
+      console.error('Error querying database:', err.message);
+      return res.status(500).json({ success: false, error: 'Database error' });
+    });
 };
 
 // Change username
@@ -150,50 +152,51 @@ exports.changeUsername = async (req, res) => {
     return res.status(400).json({ success: false, error: 'Current username, new username, and password are required' });
   }
   
-  db.get('SELECT * FROM users WHERE username = ?', [oldUsername], async (err, user) => {
-    if (err) {
-      console.error('Error querying database:', err.message);
-      return res.status(500).json({ success: false, error: 'Database error' });
-    }
-    
-    if (!user) {
-      return res.status(404).json({ success: false, error: 'User not found' });
-    }
-    
-    try {
-      const isPasswordValid = await bcrypt.compare(password, user.password);
-      
-      if (!isPasswordValid) {
-        return res.status(401).json({ success: false, error: 'Password is incorrect' });
+  db.query('SELECT * FROM users WHERE username = $1', [oldUsername])
+    .then(async result => {
+      const user = result.rows[0];
+      if (!user) {
+        return res.status(404).json({ success: false, error: 'User not found' });
       }
       
-      db.get('SELECT username FROM users WHERE username = ?', [newUsername], (err, existingUser) => {
-        if (err) {
-          console.error('Error checking username:', err.message);
-          return res.status(500).json({ success: false, error: 'Database error' });
+      try {
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        
+        if (!isPasswordValid) {
+          return res.status(401).json({ success: false, error: 'Password is incorrect' });
         }
         
-        if (existingUser) {
-          return res.status(409).json({ success: false, error: 'Username already exists' });
-        }
-        
-        db.run('UPDATE users SET username = ? WHERE username = ?', 
-          [newUsername, oldUsername], 
-          function(err) {
-            if (err) {
-              console.error('Error updating username:', err.message);
-              return res.status(500).json({ success: false, error: 'Database error' });
+        db.query('SELECT username FROM users WHERE username = $1', [newUsername])
+          .then(existingUserResult => {
+            if (existingUserResult.rows.length > 0) {
+              return res.status(409).json({ success: false, error: 'Username already exists' });
             }
             
-            res.json({ success: true, message: 'Username updated successfully' });
-          }
-        );
-      });
-    } catch (error) {
-      console.error('Error processing username change:', error);
-      res.status(500).json({ success: false, error: 'Internal server error' });
-    }
-  });
+            db.query(
+              'UPDATE users SET username = $1 WHERE username = $2', 
+              [newUsername, oldUsername]
+            )
+            .then(() => {
+              res.json({ success: true, message: 'Username updated successfully' });
+            })
+            .catch(err => {
+              console.error('Error updating username:', err.message);
+              return res.status(500).json({ success: false, error: 'Database error' });
+            });
+          })
+          .catch(err => {
+            console.error('Error checking username:', err.message);
+            return res.status(500).json({ success: false, error: 'Database error' });
+          });
+      } catch (error) {
+        console.error('Error processing username change:', error);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+      }
+    })
+    .catch(err => {
+      console.error('Error querying database:', err.message);
+      return res.status(500).json({ success: false, error: 'Database error' });
+    });
 };
 
 // Change email
@@ -209,39 +212,40 @@ exports.changeEmail = async (req, res) => {
     return res.status(400).json({ success: false, error: 'Invalid email format' });
   }
   
-  db.get('SELECT * FROM users WHERE username = ?', [username], async (err, user) => {
-    if (err) {
-      console.error('Error querying database:', err.message);
-      return res.status(500).json({ success: false, error: 'Database error' });
-    }
-    
-    if (!user) {
-      return res.status(404).json({ success: false, error: 'User not found' });
-    }
-    
-    try {
-      const isPasswordValid = await bcrypt.compare(password, user.password);
-      
-      if (!isPasswordValid) {
-        return res.status(401).json({ success: false, error: 'Password is incorrect' });
+  db.query('SELECT * FROM users WHERE username = $1', [username])
+    .then(async result => {
+      const user = result.rows[0];
+      if (!user) {
+        return res.status(404).json({ success: false, error: 'User not found' });
       }
       
-      db.run('UPDATE users SET email = ? WHERE username = ?', 
-        [newEmail, username], 
-        function(err) {
-          if (err) {
-            console.error('Error updating email:', err.message);
-            return res.status(500).json({ success: false, error: 'Database error' });
-          }
-          
-          res.json({ success: true, message: 'Email updated successfully' });
+      try {
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        
+        if (!isPasswordValid) {
+          return res.status(401).json({ success: false, error: 'Password is incorrect' });
         }
-      );
-    } catch (error) {
-      console.error('Error processing email change:', error);
-      res.status(500).json({ success: false, error: 'Internal server error' });
-    }
-  });
+        
+        db.query(
+          'UPDATE users SET email = $1 WHERE username = $2', 
+          [newEmail, username]
+        )
+        .then(() => {
+          res.json({ success: true, message: 'Email updated successfully' });
+        })
+        .catch(err => {
+          console.error('Error updating email:', err.message);
+          return res.status(500).json({ success: false, error: 'Database error' });
+        });
+      } catch (error) {
+        console.error('Error processing email change:', error);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+      }
+    })
+    .catch(err => {
+      console.error('Error querying database:', err.message);
+      return res.status(500).json({ success: false, error: 'Database error' });
+    });
 };
 
 // Delete account
@@ -252,37 +256,38 @@ exports.deleteAccount = async (req, res) => {
     return res.status(400).json({ success: false, error: 'Username and password are required' });
   }
 
-  db.get('SELECT * FROM users WHERE username = ?', [username], async (err, user) => {
-    if (err) {
-      console.error('Error querying database:', err.message);
-      return res.status(500).json({ success: false, error: 'Database error' });
-    }
-    
-    if (!user) {
-      return res.status(404).json({ success: false, error: 'User not found' });
-    }
-    
-    try {
-      const isPasswordValid = await bcrypt.compare(password, user.password);
-      
-      if (!isPasswordValid) {
-        return res.status(401).json({ success: false, error: 'Password is incorrect' });
+  db.query('SELECT * FROM users WHERE username = $1', [username])
+    .then(async result => {
+      const user = result.rows[0];
+      if (!user) {
+        return res.status(404).json({ success: false, error: 'User not found' });
       }
       
-      db.run('DELETE FROM users WHERE username = ?', 
-        [username], 
-        function(err) {
-          if (err) {
-            console.error('Error deleting account:', err.message);
-            return res.status(500).json({ success: false, error: 'Database error' });
-          }
-          
-          res.json({ success: true, message: 'Account deleted successfully' });
+      try {
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        
+        if (!isPasswordValid) {
+          return res.status(401).json({ success: false, error: 'Password is incorrect' });
         }
-      );
-    } catch (error) {
-      console.error('Error processing account deletion:', error);
-      res.status(500).json({ success: false, error: 'Internal server error' });
-    }
-  });
+        
+        db.query(
+          'DELETE FROM users WHERE username = $1', 
+          [username]
+        )
+        .then(() => {
+          res.json({ success: true, message: 'Account deleted successfully' });
+        })
+        .catch(err => {
+          console.error('Error deleting account:', err.message);
+          return res.status(500).json({ success: false, error: 'Database error' });
+        });
+      } catch (error) {
+        console.error('Error processing account deletion:', error);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+      }
+    })
+    .catch(err => {
+      console.error('Error querying database:', err.message);
+      return res.status(500).json({ success: false, error: 'Database error' });
+    });
 };
