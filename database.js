@@ -1,13 +1,13 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
-const pool = new Pool({
+const db = new Pool({
   connectionString: process.env.DATABASE_URL, // e.g. postgres://user:password@host:port/database
 });
 
 (async () => {
   try {
-    const client = await pool.connect();
+    const client = await db.connect();
     console.log('Connected to the PostgreSQL database');
 
     await client.query(`
@@ -46,9 +46,9 @@ const pool = new Pool({
 })();
 
 process.on('SIGINT', async () => {
-  await pool.end();
-  console.log('Database connection pool closed');
+  await db.end();
+  console.log('Database connection closed');
   process.exit(0);
 });
 
-module.exports = pool;
+module.exports = db;
