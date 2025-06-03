@@ -706,6 +706,8 @@ body.modal-open {
 .hardware-value.uptime-blue {
     color: #63b3ed;
     background-color: rgba(99, 179, 237, 0.1);
+    display: inline-block;
+    white-space: nowrap;
 }
 
 @media (max-width: 768px) {

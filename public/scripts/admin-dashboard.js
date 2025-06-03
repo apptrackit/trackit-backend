@@ -1036,26 +1036,13 @@ async function updateHardwareInfo() {
             // Format the numbers to ensure they're always two digits
             const formatNumber = (num) => num.toString().padStart(2, '0');
             
-            formattedUptime = `
-                <div class="uptime-container">
-                    <div class="uptime-value">
-                        <span class="uptime-number">${totalDays}</span>
-                        <span class="uptime-label">days</span>
-                    </div>
-                    <div class="uptime-separator">:</div>
-                    <div class="uptime-value">
-                        <span class="uptime-number">${formatNumber(hours)}</span>
-                        <span class="uptime-label">hours</span>
-                    </div>
-                    <div class="uptime-separator">:</div>
-                    <div class="uptime-value">
-                        <span class="uptime-number">${formatNumber(minutes)}</span>
-                        <span class="uptime-label">min</span>
-                    </div>
-                </div>
-            `;
+            // Format uptime as a single string
+            const formattedUptime = `${totalDays}d ${formatNumber(hours)}h ${formatNumber(minutes)}m`;
             
-            uptimeElement.innerHTML = formattedUptime;
+            uptimeElement.textContent = formattedUptime;
+            // Add the blue color class
+            uptimeElement.classList.add('uptime-blue');
+
         }
     } catch (error) {
         console.error('Error updating hardware info:', error);
