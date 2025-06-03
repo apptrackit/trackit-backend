@@ -650,10 +650,16 @@ body.modal-open {
     align-items: center;
     gap: 0.5rem;
     padding: 0.5rem 1rem;
-    background-color: rgba(99, 179, 237, 0.05);
-    border-radius: 6px;
+    background-color: rgba(99, 179, 237, 0.1);
+    border-radius: 4px;
     min-width: 150px;
     justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.hardware-item:hover {
+    background-color: rgba(99, 179, 237, 0.2);
 }
 
 .hardware-label {
@@ -664,9 +670,12 @@ body.modal-open {
 .hardware-value {
     font-size: 1rem;
     font-weight: 600;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    background-color: rgba(99, 179, 237, 0.1);
+    color: #63b3ed;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: none;
+    padding: 0;
 }
 
 /* Temperature Colors */
