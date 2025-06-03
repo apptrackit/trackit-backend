@@ -647,14 +647,13 @@ body.modal-open {
 
 .hardware-item {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid #4a5568;
-}
-
-.hardware-item:last-child {
-    border-bottom: none;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background-color: rgba(99, 179, 237, 0.05);
+    border-radius: 6px;
+    min-width: 150px;
+    justify-content: center;
 }
 
 .hardware-label {
@@ -663,22 +662,11 @@ body.modal-open {
 }
 
 .hardware-value {
-    font-weight: 600;
     font-size: 1rem;
-    color: #e2e8f0;
-}
-
-/* Uptime specific styling */
-.hardware-item.uptime-item {
-    background-color: rgba(99, 179, 237, 0.05);
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
     border-radius: 4px;
-    padding: 0.5rem 0.75rem;
-    margin: 0.25rem 0;
-}
-
-.hardware-item.uptime-item .hardware-value {
-    color: #63b3ed;
-    font-weight: 500;
+    background-color: rgba(99, 179, 237, 0.1);
 }
 
 /* Temperature Colors */
