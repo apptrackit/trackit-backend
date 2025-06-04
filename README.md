@@ -652,6 +652,87 @@ The JWT token contains:
     - Green: 1500-3000 RPM
     - Blue: <1500 RPM
 
+### Metric Management
+
+#### Log New Metric Entry
+
+- **URL**: `/api/metrics`
+- **Method**: POST
+- **Headers**:
+  - `x-api-key: your_api_key`
+  - `Authorization: Bearer your_jwt_token`
+- **Body**:
+  ```json
+  {
+    "metric_type_id": 1,
+    "value": 75,
+    "date": "2024-03-25",
+    "is_apple_health": false
+  }
+  ```
+- **Success Response**:
+  ```json
+  {
+    "success": true,
+    "message": "Metric entry created successfully",
+    "entryId": 123
+  }
+  ```
+- **Error Responses**:
+  - 400: Missing required fields
+  - 401: Authentication token or API key missing/invalid
+  - 403: Invalid API key
+  - 404: Metric type not found
+  - 500: Database or server error
+
+#### Edit Metric Entry
+
+- **URL**: `/api/metrics/:entryId`
+- **Method**: PUT
+- **Headers**:
+  - `x-api-key: your_api_key`
+  - `Authorization: Bearer your_jwt_token`
+- **Body**:
+  ```json
+  {
+    "value": 76,
+    "date": "2024-03-26"
+  }
+  ```
+- **Success Response**:
+  ```json
+  {
+    "success": true,
+    "message": "Metric entry updated successfully"
+  }
+  ```
+- **Error Responses**:
+  - 400: No update fields provided
+  - 401: Authentication token or API key missing/invalid
+  - 403: Invalid API key
+  - 404: Metric entry not found or does not belong to the user
+  - 500: Database or server error
+
+#### Delete Metric Entry
+
+- **URL**: `/api/metrics/:entryId`
+- **Method**: DELETE
+- **Headers**:
+  - `x-api-key: your_api_key`
+  - `Authorization: Bearer your_jwt_token`
+- **Success Response**:
+  ```json
+  {
+    "success": true,
+    "message": "Metric entry deleted successfully"
+  }
+  ```
+- **Error Responses**:
+  - 401: Authentication token or API key missing/invalid
+  - 403: Invalid API key
+  - 404: Metric entry not found or does not belong to the user
+  - 500: Database or server error
+
 ## Session Management
 
 The system uses a combination of access tokens and refresh tokens for session management:
