@@ -18,14 +18,16 @@ const generateDeviceId = (req) => {
 // Get active sessions count for a user
 const getActiveSessionsCount = (userId) => {
   return new Promise((resolve, reject) => {
-    db.get(
-      'SELECT COUNT(*) as count FROM sessions WHERE user_id = ? AND refresh_token_expires_at > datetime("now")',
-      [userId],
-      (err, row) => {
-        if (err) reject(err);
-        resolve(row ? row.count : 0);
-      }
-    );
+    db.query(
+      'SELECT COUNT(*) as count FROM sessions WHERE user_id = $1 AND refresh_token_expires_at > NOW()',
+      [userId]
+    )
+    .then(result => {
+      resolve(result.rows[0] ? result.rows[0].count : 0);
+    })
+    .catch(err => {
+      reject(err);
+    });
   });
 };
 
@@ -37,65 +39,58 @@ exports.login = async (req, res) => {
     return res.status(400).json({ success: false, error: 'Username and password are required' });
   }
 
-  db.get('SELECT * FROM users WHERE username = ?', [username], async (err, user) => {
-    if (err) {
-      console.error('Error querying database:', err.message);
-      return res.status(500).json({ success: false, error: 'Database error' });
-    }
-    
-    if (!user) {
-      return res.json({ success: false, authenticated: false, message: 'User not found' });
-    }
-    
-    try {
-      const passwordMatch = await bcrypt.compare(password, user.password);
+  db.query('SELECT * FROM users WHERE username = $1', [username])
+    .then(async result => {
+      const user = result.rows[0];
+      if (!user) {
+        return res.json({ success: false, authenticated: false, message: 'User not found' });
+      }
       
-      if (!passwordMatch) {
-        return res.json({ 
-          success: false, 
-          authenticated: false,
-          message: 'Invalid password' 
-        });
-      }
+      try {
+        const passwordMatch = await bcrypt.compare(password, user.password);
+        
+        if (!passwordMatch) {
+          return res.json({ 
+            success: false, 
+            authenticated: false,
+            message: 'Invalid password' 
+          });
+        }
 
-      // Check active sessions count
-      const activeSessions = await getActiveSessionsCount(user.id);
-      if (activeSessions >= 5) {
-        return res.status(403).json({
-          success: false,
-          error: 'Maximum number of active sessions reached. Please logout from another device first.'
-        });
-      }
+        // Check active sessions count
+        const activeSessions = await getActiveSessionsCount(user.id);
+        if (activeSessions >= 5) {
+          return res.status(403).json({
+            success: false,
+            error: 'Maximum number of active sessions reached. Please logout from another device first.'
+          });
+        }
 
-      const deviceId = generateDeviceId(req);
+        const deviceId = generateDeviceId(req);
 
-      // Create access token (7 days)
-      const accessToken = jwt.sign(
-        { userId: user.id, username: user.username, deviceId },
-        process.env.JWT_SECRET,
-        { expiresIn: '7d' }
-      );
+        // Create access token (7 days)
+        const accessToken = jwt.sign(
+          { userId: user.id, username: user.username, deviceId },
+          process.env.JWT_SECRET,
+          { expiresIn: '7d' }
+        );
 
-      // Create refresh token (365 days)
-      const refreshToken = generateRefreshToken();
+        // Create refresh token (365 days)
+        const refreshToken = generateRefreshToken();
 
-      // Calculate expiration dates
-      const accessTokenExpiresAt = new Date();
-      accessTokenExpiresAt.setDate(accessTokenExpiresAt.getDate() + 7);
+        // Calculate expiration dates
+        const accessTokenExpiresAt = new Date();
+        accessTokenExpiresAt.setDate(accessTokenExpiresAt.getDate() + 7);
 
-      const refreshTokenExpiresAt = new Date();
-      refreshTokenExpiresAt.setDate(refreshTokenExpiresAt.getDate() + 365);
+        const refreshTokenExpiresAt = new Date();
+        refreshTokenExpiresAt.setDate(refreshTokenExpiresAt.getDate() + 365);
 
-      // Store session in database
-      db.run(
-        'INSERT OR REPLACE INTO sessions (user_id, device_id, access_token, refresh_token, access_token_expires_at, refresh_token_expires_at) VALUES (?, ?, ?, ?, ?, ?)',
-        [user.id, deviceId, accessToken, refreshToken, accessTokenExpiresAt.toISOString(), refreshTokenExpiresAt.toISOString()],
-        function(err) {
-          if (err) {
-            console.error('Error creating session:', err);
-            return res.status(500).json({ success: false, error: 'Failed to create session' });
-          }
-
+        // Store session in database
+        db.query(
+          'INSERT OR REPLACE INTO sessions (user_id, device_id, access_token, refresh_token, access_token_expires_at, refresh_token_expires_at) VALUES ($1, $2, $3, $4, $5, $6)',
+          [user.id, deviceId, accessToken, refreshToken, accessTokenExpiresAt.toISOString(), refreshTokenExpiresAt.toISOString()]
+        )
+        .then(() => {
           res.json({ 
             success: true, 
             authenticated: true,
@@ -110,13 +105,20 @@ exports.login = async (req, res) => {
               email: user.email
             }
           });
-        }
-      );
-    } catch (error) {
-      console.error('Error comparing passwords:', error);
-      res.status(500).json({ success: false, error: 'Internal server error' });
-    }
-  });
+        })
+        .catch(err => {
+          console.error('Error creating session:', err);
+          return res.status(500).json({ success: false, error: 'Failed to create session' });
+        });
+      } catch (error) {
+        console.error('Error comparing passwords:', error);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+      }
+    })
+    .catch(err => {
+      console.error('Error querying database:', err.message);
+      return res.status(500).json({ success: false, error: 'Database error' });
+    });
 };
 
 // Refresh access token
@@ -127,29 +129,22 @@ exports.refreshToken = async (req, res) => {
     return res.status(400).json({ success: false, error: 'Refresh token and device ID are required' });
   }
 
-  // Check if refresh token exists and is not expired
-  db.get(
-    'SELECT * FROM sessions WHERE refresh_token = ? AND device_id = ? AND refresh_token_expires_at > datetime("now")',
-    [refreshToken, deviceId],
-    async (err, session) => {
-      if (err) {
-        console.error('Error checking refresh token:', err);
-        return res.status(500).json({ success: false, error: 'Database error' });
-      }
+  db.query(
+    'SELECT * FROM sessions WHERE refresh_token = $1 AND device_id = $2 AND refresh_token_expires_at > NOW()',
+    [refreshToken, deviceId]
+  )
+  .then(async result => {
+    const session = result.rows[0];
+    if (!session) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Invalid or expired refresh token' 
+      });
+    }
 
-      if (!session) {
-        return res.status(401).json({ 
-          success: false, 
-          error: 'Invalid or expired refresh token' 
-        });
-      }
-
-      // Get user info
-      db.get('SELECT * FROM users WHERE id = ?', [session.user_id], (err, user) => {
-        if (err) {
-          console.error('Error getting user:', err);
-          return res.status(500).json({ success: false, error: 'Database error' });
-        }
+    db.query('SELECT * FROM users WHERE id = $1', [session.user_id])
+      .then(userResult => {
+        const user = userResult.rows[0];
 
         // Create new access token
         const newAccessToken = jwt.sign(
@@ -169,26 +164,32 @@ exports.refreshToken = async (req, res) => {
         newRefreshTokenExpiresAt.setDate(newRefreshTokenExpiresAt.getDate() + 365);
 
         // Update session with new tokens
-        db.run(
-          'UPDATE sessions SET access_token = ?, refresh_token = ?, access_token_expires_at = ?, refresh_token_expires_at = ?, last_refresh_at = datetime("now"), refresh_count = refresh_count + 1 WHERE id = ?',
-          [newAccessToken, newRefreshToken, newAccessTokenExpiresAt.toISOString(), newRefreshTokenExpiresAt.toISOString(), session.id],
-          function(err) {
-            if (err) {
-              console.error('Error updating tokens:', err);
-              return res.status(500).json({ success: false, error: 'Failed to refresh tokens' });
-            }
-
-            res.json({
-              success: true,
-              accessToken: newAccessToken,
-              refreshToken: newRefreshToken,
-              deviceId: session.device_id
-            });
-          }
-        );
+        db.query(
+          'UPDATE sessions SET access_token = $1, refresh_token = $2, access_token_expires_at = $3, refresh_token_expires_at = $4, last_refresh_at = NOW(), refresh_count = refresh_count + 1 WHERE id = $5',
+          [newAccessToken, newRefreshToken, newAccessTokenExpiresAt.toISOString(), newRefreshTokenExpiresAt.toISOString(), session.id]
+        )
+        .then(() => {
+          res.json({
+            success: true,
+            accessToken: newAccessToken,
+            refreshToken: newRefreshToken,
+            deviceId: session.device_id
+          });
+        })
+        .catch(err => {
+          console.error('Error updating tokens:', err);
+          return res.status(500).json({ success: false, error: 'Failed to refresh tokens' });
+        });
+      })
+      .catch(err => {
+        console.error('Error getting user:', err);
+        return res.status(500).json({ success: false, error: 'Database error' });
       });
-    }
-  );
+  })
+  .catch(err => {
+    console.error('Error checking refresh token:', err);
+    return res.status(500).json({ success: false, error: 'Database error' });
+  });
 };
 
 // Logout user
@@ -199,14 +200,14 @@ exports.logout = async (req, res) => {
     return res.status(400).json({ success: false, error: 'Device ID and User ID are required' });
   }
 
-  db.run('DELETE FROM sessions WHERE device_id = ? AND user_id = ?', [deviceId, userId], function(err) {
-    if (err) {
+  db.query('DELETE FROM sessions WHERE device_id = $1 AND user_id = $2', [deviceId, userId])
+    .then(() => {
+      res.json({ success: true, message: 'Logged out successfully' });
+    })
+    .catch(err => {
       console.error('Error deleting session:', err);
       return res.status(500).json({ success: false, error: 'Failed to logout' });
-    }
-    
-    res.json({ success: true, message: 'Logged out successfully' });
-  });
+    });
 };
 
 // Logout from all devices
@@ -217,14 +218,14 @@ exports.logoutAll = async (req, res) => {
     return res.status(400).json({ success: false, error: 'User ID is required' });
   }
 
-  db.run('DELETE FROM sessions WHERE user_id = ?', [userId], function(err) {
-    if (err) {
+  db.query('DELETE FROM sessions WHERE user_id = $1', [userId])
+    .then(() => {
+      res.json({ success: true, message: 'Logged out from all devices successfully' });
+    })
+    .catch(err => {
       console.error('Error deleting sessions:', err);
       return res.status(500).json({ success: false, error: 'Failed to logout from all devices' });
-    }
-
-    res.json({ success: true, message: 'Logged out from all devices successfully' });
-  });
+    });
 };
 
 // List active sessions
@@ -235,21 +236,20 @@ exports.listSessions = async (req, res) => {
     return res.status(400).json({ success: false, error: 'User ID is required' });
   }
 
-  db.all(
-    'SELECT id, device_id, created_at, last_refresh_at, last_check_at, refresh_count FROM sessions WHERE user_id = ? AND refresh_token_expires_at > datetime("now")',
-    [userId],
-    (err, sessions) => {
-      if (err) {
-        console.error('Error getting sessions:', err);
-        return res.status(500).json({ success: false, error: 'Failed to get sessions' });
-      }
-
-      res.json({
-        success: true,
-        sessions: sessions
-      });
-    }
-  );
+  db.query(
+    'SELECT id, device_id, created_at, last_refresh_at, last_check_at, refresh_count FROM sessions WHERE user_id = $1 AND refresh_token_expires_at > NOW()',
+    [userId]
+  )
+  .then(result => {
+    res.json({
+      success: true,
+      sessions: result.rows
+    });
+  })
+  .catch(err => {
+    console.error('Error getting sessions:', err);
+    return res.status(500).json({ success: false, error: 'Failed to get sessions' });
+  });
 };
 
 // Check session status
@@ -268,58 +268,63 @@ exports.checkSession = async (req, res) => {
     // Verify the token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    // Check if token exists in database and is not expired
-    db.get('SELECT * FROM sessions WHERE access_token = ? AND device_id = ? AND access_token_expires_at > datetime("now")', 
-      [token, decoded.deviceId], 
-      (err, session) => {
-        if (err) {
-          console.error('Error checking session:', err);
+    db.query('SELECT * FROM sessions WHERE access_token = $1 AND device_id = $2 AND access_token_expires_at > NOW()', 
+      [token, decoded.deviceId]
+    )
+    .then(result =>  {
+      const session = result.rows[0];
+      if (!session) {
+        return res.json({ 
+          success: false, 
+          isAuthenticated: false, 
+          message: 'Session expired or invalid' 
+        });
+      }
+
+      db.query('UPDATE sessions SET last_check_at = NOW() WHERE id = $1', [session.id])
+        .catch(err => {
+          console.error('Error updating last_check_at:', err);
+        });
+        
+      db.query('SELECT id, username, email FROM users WHERE id = $1', 
+        [decoded.userId]
+      )
+      .then(userResult => {
+        const user = userResult.rows[0];
+        if (!user) {
+          console.error('Error getting user info:', err);
           return res.status(500).json({ 
             success: false, 
             isAuthenticated: false, 
             error: 'Internal server error' 
           });
         }
-        
-        if (!session) {
-          return res.json({ 
-            success: false, 
-            isAuthenticated: false, 
-            message: 'Session expired or invalid' 
-          });
-        }
 
-        // Update last_check_at timestamp
-        db.run('UPDATE sessions SET last_check_at = datetime("now") WHERE id = ?', [session.id], (err) => {
-          if (err) {
-            console.error('Error updating last_check_at:', err);
-          }
+        res.json({ 
+          success: true, 
+          isAuthenticated: true,
+          message: 'Session is valid',
+          deviceId: session.device_id,
+          user: user
         });
-        
-        // Get user info
-        db.get('SELECT id, username, email FROM users WHERE id = ?', 
-          [decoded.userId], 
-          (err, user) => {
-            if (err) {
-              console.error('Error getting user info:', err);
-              return res.status(500).json({ 
-                success: false, 
-                isAuthenticated: false, 
-                error: 'Internal server error' 
-              });
-            }
-
-            res.json({ 
-              success: true, 
-              isAuthenticated: true,
-              message: 'Session is valid',
-              deviceId: session.device_id,
-              user: user
-            });
-          }
-        );
-      }
-    );
+      })
+      .catch(err => {
+        console.error('Error getting user info:', err);
+        return res.status(500).json({ 
+          success: false, 
+          isAuthenticated: false, 
+          error: 'Internal server error' 
+        });
+      });
+    })
+    .catch(err => {
+      console.error('Error checking session:', err);
+      return res.status(500).json({ 
+        success: false, 
+        isAuthenticated: false, 
+        error: 'Internal server error' 
+      });
+    });
   } catch (error) {
     return res.json({ 
       success: false, 

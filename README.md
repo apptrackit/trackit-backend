@@ -6,7 +6,7 @@ A REST API for user management with authentication.
 
 - Node.js (v14 or later)
 - npm
-- SQLite3
+- PostgreSQL
 
 ## Installation
 
@@ -27,7 +27,7 @@ Create a `.env` file in the root directory:
 
 ```env
 # Database Configuration
-DB_PATH=/path/to/your/database.db
+DATABASE_URL=postgres://username:password@localhost:5432/database_name
 
 # API Security
 API_KEY=your_secure_api_key_here
@@ -43,7 +43,7 @@ SALT=10  # Number of salt rounds for password hashing
 # Admin Account
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=admin
-ADMIN_API_KEY=admin
+ADMIN_API_KEY=your_admin_api_key_here
 ```
 
 ## Project Structure
@@ -73,27 +73,62 @@ trackit-backend/
 
 ## Database
 
-The application uses SQLite with two main tables:
+The application uses PostgreSQL with two main tables:
 
 ### Users Table
-- `id`: Unique identifier
-- `username`: Unique username
-- `email`: User's email
-- `password`: Hashed password
+- `id`: Serial primary key
+- `username`: Unique username (TEXT)
+- `email`: User's email (TEXT)
+- `password`: Hashed password (TEXT)
+- `created_at`: Account creation timestamp (TIMESTAMP)
 
 ### Sessions Table
-- `id`: Unique identifier
-- `user_id`: Reference to users table
-- `device_id`: Unique device identifier
-- `access_token`: JWT access token
-- `refresh_token`: Refresh token
-- `access_token_expires_at`: Access token expiration
-- `refresh_token_expires_at`: Refresh token expiration
-- `created_at`: Session creation timestamp
-- `last_refresh_at`: Last token refresh timestamp
-- `refresh_count`: Number of token refreshes
+- `id`: Serial primary key
+- `user_id`: Reference to users table (INTEGER)
+- `device_id`: Unique device identifier (TEXT)
+- `access_token`: JWT access token (TEXT)
+- `refresh_token`: Refresh token (TEXT)
+- `access_token_expires_at`: Access token expiration (TIMESTAMP)
+- `refresh_token_expires_at`: Refresh token expiration (TIMESTAMP)
+- `created_at`: Session creation timestamp (TIMESTAMP)
+- `last_refresh_at`: Last token refresh timestamp (TIMESTAMP)
+- `last_check_at`: Last session check timestamp (TIMESTAMP)
+- `refresh_count`: Number of token refreshes (INTEGER)
 
-The database is automatically created and initialized when the application starts.
+### Metric Types Table
+- `id`: Serial primary key
+- `name`: Name of the metric type (VARCHAR)
+- `unit`: Unit for this type (VARCHAR)
+- `icon_name`: Icon name for this type (VARCHAR)
+- `is_default`: Indicates if it's a system-defined default type (BOOLEAN)
+- `user_id`: Reference to user who created custom type (INTEGER, nullable)
+- `category`: Category of the metric type (VARCHAR)
+
+### Metric Entries Table
+- `id`: Serial primary key
+- `user_id`: Reference to users table (INTEGER)
+- `metric_type_id`: Reference to metric_types table (INTEGER)
+- `value`: Metric value (BIGINT)
+- `date`: Date of the metric entry (DATE)
+- `is_apple_health`: Is from Apple Health (BOOLEAN)
+
+The database tables are automatically created when the application starts if they don't exist.
+
+## Database Setup
+
+1. Install PostgreSQL on your system
+2. Create a database:
+```sql
+CREATE DATABASE trackitdb;
+```
+
+3. Create a user (optional):
+```sql
+CREATE USER dev WITH PASSWORD 'dev';
+GRANT ALL PRIVILEGES ON DATABASE trackitdb TO dev;
+```
+
+4. Update your `.env` file with the correct DATABASE_URL
 
 ## Running the Server
 
@@ -616,6 +651,87 @@ The JWT token contains:
     - Red: >3000 RPM
     - Green: 1500-3000 RPM
     - Blue: <1500 RPM
+
+### Metric Management
+
+#### Log New Metric Entry
+
+- **URL**: `/api/metrics`
+- **Method**: POST
+- **Headers**:
+  - `x-api-key: your_api_key`
+  - `Authorization: Bearer your_jwt_token`
+- **Body**:
+  ```json
+  {
+    "metric_type_id": 1,
+    "value": 75,
+    "date": "2024-03-25",
+    "is_apple_health": false
+  }
+  ```
+- **Success Response**:
+  ```json
+  {
+    "success": true,
+    "message": "Metric entry created successfully",
+    "entryId": 123
+  }
+  ```
+- **Error Responses**:
+  - 400: Missing required fields
+  - 401: Authentication token or API key missing/invalid
+  - 403: Invalid API key
+  - 404: Metric type not found
+  - 500: Database or server error
+
+#### Edit Metric Entry
+
+- **URL**: `/api/metrics/:entryId`
+- **Method**: PUT
+- **Headers**:
+  - `x-api-key: your_api_key`
+  - `Authorization: Bearer your_jwt_token`
+- **Body**:
+  ```json
+  {
+    "value": 76,
+    "date": "2024-03-26"
+  }
+  ```
+- **Success Response**:
+  ```json
+  {
+    "success": true,
+    "message": "Metric entry updated successfully"
+  }
+  ```
+- **Error Responses**:
+  - 400: No update fields provided
+  - 401: Authentication token or API key missing/invalid
+  - 403: Invalid API key
+  - 404: Metric entry not found or does not belong to the user
+  - 500: Database or server error
+
+#### Delete Metric Entry
+
+- **URL**: `/api/metrics/:entryId`
+- **Method**: DELETE
+- **Headers**:
+  - `x-api-key: your_api_key`
+  - `Authorization: Bearer your_jwt_token`
+- **Success Response**:
+  ```json
+  {
+    "success": true,
+    "message": "Metric entry deleted successfully"
+  }
+  ```
+- **Error Responses**:
+  - 401: Authentication token or API key missing/invalid
+  - 403: Invalid API key
+  - 404: Metric entry not found or does not belong to the user
+  - 500: Database or server error
 
 ## Session Management
 
