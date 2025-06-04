@@ -965,6 +965,14 @@ function initializeTimeframeButtons() {
 document.addEventListener('DOMContentLoaded', () => {
     initializeTimeframeButtons();
     loadDashboardData();
+    
+    const refreshBtn = document.getElementById('refresh-users-btn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+            fetchUserData();
+            updateStats();
+        });
+    }
 });
 
 // Function to update hardware information

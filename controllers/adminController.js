@@ -8,13 +8,14 @@ const execPromise = util.promisify(exec);
 
 exports.getAllUserData = (req, res) => {
 
-  db.all('SELECT * FROM users', [], (err, rows) => {
-    if (err) {
+  db.query('SELECT * FROM users')
+    .then(result => {
+      res.json({ success: true, users: result.rows });
+    })
+    .catch(err => {
       console.error('Error querying database:', err.message);
       return res.status(500).json({ success: false, error: 'Database error' });
-    }
-    res.json({ success: true, users: rows });
-  });
+    });
 };
 
 
@@ -26,35 +27,34 @@ exports.getUserInfo = (req, res) => {
     return res.status(400).json({ success: false, error: 'Username is required' });
   }
 
-  db.get('SELECT * FROM users WHERE username = ?', [username], (err, user) => {
-    if (err) {
+  db.query('SELECT * FROM users WHERE username = $1', [username])
+    .then(result => {
+      const user = result.rows[0];
+      if (!user) {
+        return res.status(404).json({ success: false, error: 'User not found' });
+      }
+      res.json({ ...user });
+    })
+    .catch(err => {
       console.error('Error querying database:', err.message);
       return res.status(500).json({ success: false, error: 'Database error' });
-    }
-
-    if (!user) {
-      return res.status(404).json({ success: false, error: 'User not found' });
-    }
-
-    // Return user data directly with success flag
-    res.json({ ...user });
-  });
+    });
 };
 
 // Get all emails
 exports.getAllEmails = (req, res) => {
-  db.all('SELECT email FROM users', [], (err, rows) => {
-    if (err) {
+  db.query('SELECT email FROM users')
+    .then(result => {
+      const emails = result.rows.map(row => row.email);
+      res.json({
+        success: true,
+        emails: emails.filter((email, index, self) => self.indexOf(email) === index)
+      });
+    })
+    .catch(err => {
       console.error('Error querying database:', err.message);
       return res.status(500).json({ success: false, error: 'Database error' });
-    }
-
-    const emails = rows.map(row => row.email);
-    res.json({
-      success: true,
-      emails: emails.filter((email, index, self) => self.indexOf(email) === index)
     });
-  });
 };
 
 // New function to update user data
@@ -73,28 +73,30 @@ exports.updateUser = (req, res) => {
     if (fields.length === 0) {
       return res.status(400).json({ success: false, error: 'No fields to update' });
     }
-    const setClause = fields.map(field => `${field} = ?`).join(', ');
-    const sql = `UPDATE users SET ${setClause} WHERE id = ?`;
+    const setClause = fields.map((field, index) => `${field} = $${index + 1}`).join(', ');
+    const sql = `UPDATE users SET ${setClause} WHERE id = $${fields.length + 1}`;
     values.push(id);
-    db.run(sql, values, function(err) {
-      if (err) {
+    db.query(sql, values)
+      .then(result => {
+        if (result.rowCount === 0) {
+          return res.status(404).json({ success: false, error: 'User not found or no changes made' });
+        }
+        res.json({
+          success: true,
+          message: 'User updated successfully',
+          changes: result.rowCount
+        });
+      })
+      .catch(err => {
         console.error('Error updating user:', err.message);
         return res.status(500).json({ success: false, error: 'Database error: ' + err.message });
-      }
-      if (this.changes === 0) {
-        return res.status(404).json({ success: false, error: 'User not found or no changes made' });
-      }
-      res.json({
-        success: true,
-        message: 'User updated successfully',
-        changes: this.changes
       });
-    });
   };
 
   // Password hashing logic
   if (updateFields.password) {
-    bcrypt.hash(updateFields.password, saltRounds, (err, hash) => {
+    const passwordStr = String(updateFields.password); // Ensure string
+    bcrypt.hash(passwordStr, saltRounds, (err, hash) => {
       if (err) {
         console.error('Error hashing password:', err);
         return res.status(500).json({ success: false, error: 'Password hashing failed' });
@@ -103,7 +105,8 @@ exports.updateUser = (req, res) => {
       processUpdate();
     });
   } else if (updateFields.passwordHash) {
-    bcrypt.hash(updateFields.passwordHash, saltRounds, (err, hash) => {
+    const passwordStr = String(updateFields.passwordHash); // Ensure string
+    bcrypt.hash(passwordStr, saltRounds, (err, hash) => {
       if (err) {
         console.error('Error hashing password:', err);
         return res.status(500).json({ success: false, error: 'Password hashing failed' });
@@ -112,7 +115,8 @@ exports.updateUser = (req, res) => {
       processUpdate();
     });
   } else if (updateFields.password_hash) {
-    bcrypt.hash(updateFields.password_hash, saltRounds, (err, hash) => {
+    const passwordStr = String(updateFields.password_hash); // Ensure string
+    bcrypt.hash(passwordStr, saltRounds, (err, hash) => {
       if (err) {
         console.error('Error hashing password:', err);
         return res.status(500).json({ success: false, error: 'Password hashing failed' });
@@ -127,34 +131,33 @@ exports.updateUser = (req, res) => {
 
 // New function to delete a user
 exports.deleteUser = (req, res) => {
-
   const { id } = req.body;
 
   if (!id) {
     return res.status(400).json({ success: false, error: 'User ID is required' });
   }
 
-  const sql = 'DELETE FROM users WHERE id = ?';
+  const sql = 'DELETE FROM users WHERE id = $1';
 
   console.log('Executing delete SQL:', sql); // Log the SQL for debugging
   console.log('With ID:', id); // Log the ID
 
-  db.run(sql, [id], function(err) {
-    if (err) {
+  db.query(sql, [id])
+    .then(result => {
+      if (result.rowCount === 0) {
+        return res.status(404).json({ success: false, error: 'User not found' });
+      }
+
+      res.json({
+        success: true,
+        message: 'User deleted successfully',
+        changes: result.rowCount
+      });
+    })
+    .catch(err => {
       console.error('Error deleting user:', err.message);
       return res.status(500).json({ success: false, error: 'Database error: ' + err.message });
-    }
-
-    if (this.changes === 0) {
-      return res.status(404).json({ success: false, error: 'User not found' });
-    }
-
-    res.json({
-      success: true,
-      message: 'User deleted successfully',
-      changes: this.changes
     });
-  });
 };
 
 exports.createUser = (req, res) => {
@@ -175,48 +178,48 @@ exports.createUser = (req, res) => {
   }
 
   // Check if username or email already exists
-  db.get('SELECT * FROM users WHERE username = ? OR email = ?', [username, email], (err, existingUser) => {
-    if (err) {
-      console.error('Error checking existing user:', err.message);
-      return res.status(500).json({ success: false, error: 'Database error' });
-    }
-
-    if (existingUser) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Username or email already exists' 
-      });
-    }
-
-    // Hash the password
-    bcrypt.hash(password, saltRounds, (err, hashedPassword) => {
-      if (err) {
-        console.error('Error hashing password:', err);
-        return res.status(500).json({ success: false, error: 'Password hashing failed' });
+  db.query('SELECT * FROM users WHERE username = $1 OR email = $2', [username, email])
+    .then(result => {
+      const existingUser = result.rows[0];
+      if (existingUser) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Username or email already exists' 
+        });
       }
 
-      // Insert new user
-      const sql = `
-        INSERT INTO users (username, email, password)
-        VALUES (?, ?, ?)
-      `;
-
-      db.run(sql, [username, email, hashedPassword], function(err) {
+      // Hash the password
+      bcrypt.hash(password, saltRounds, (err, hashedPassword) => {
         if (err) {
-          console.error('Error creating user:', err.message);
-          return res.status(500).json({ success: false, error: 'Database error' });
+          console.error('Error hashing password:', err);
+          return res.status(500).json({ success: false, error: 'Password hashing failed' });
         }
 
-        res.json({
-          success: true,
-          message: 'User created successfully',
-          userId: this.lastID
-        });
+        // Insert new user
+        const sql = `
+          INSERT INTO users (username, email, password)
+          VALUES ($1, $2, $3)
+        `;
+
+        db.query(sql, [username, email, hashedPassword])
+          .then(result => {
+            res.json({
+              success: true,
+              message: 'User created successfully',
+              userId: result.insertId
+            });
+          })
+          .catch(err => {
+            console.error('Error creating user:', err.message);
+            return res.status(500).json({ success: false, error: 'Database error' });
+          });
       });
+    })
+    .catch(err => {
+      console.error('Error checking existing user:', err.message);
+      return res.status(500).json({ success: false, error: 'Database error' });
     });
-  });
 };
-// ... existing code ...
 
 exports.getActiveUsers = (req, res) => {
   const { range } = req.query;
@@ -243,20 +246,21 @@ exports.getActiveUsers = (req, res) => {
   const sql = `
     SELECT COUNT(DISTINCT user_id) as count 
     FROM sessions 
-    WHERE datetime(last_check_at) >= datetime(?)
+    WHERE last_check_at >= $1
   `;
 
-  db.get(sql, [timeFilter.toISOString()], (err, row) => {
-    if (err) {
+  db.query(sql, [timeFilter.toISOString()])
+    .then(result => {
+      res.json({
+        success: true,
+        count: result.rows[0] ? result.rows[0].count : 0,
+        range: range
+      });
+    })
+    .catch(err => {
       console.error('Error getting active users:', err.message);
       return res.status(500).json({ success: false, error: 'Database error' });
-    }
-    res.json({
-      success: true,
-      count: row ? row.count : 0,
-      range: range
     });
-  });
 };
 
 exports.getRegistrations = (req, res) => {
@@ -284,20 +288,21 @@ exports.getRegistrations = (req, res) => {
   const sql = `
     SELECT COUNT(*) as count 
     FROM users 
-    WHERE datetime(created_at) >= datetime(?)
+    WHERE created_at >= $1
   `;
 
-  db.get(sql, [timeFilter.toISOString()], (err, row) => {
-    if (err) {
+  db.query(sql, [timeFilter.toISOString()])
+    .then(result => {
+      res.json({
+        success: true,
+        count: result.rows[0] ? result.rows[0].count : 0,
+        range: range
+      });
+    })
+    .catch(err => {
       console.error('Error getting registrations:', err.message);
       return res.status(500).json({ success: false, error: 'Database error' });
-    }
-    res.json({
-      success: true,
-      count: row ? row.count : 0,
-      range: range
     });
-  });
 };
 
 exports.getHardwareInfo = async (req, res) => {

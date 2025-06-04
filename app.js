@@ -18,11 +18,13 @@ app.get('/', (req, res) => {
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const adminRoutes = require('./routes/admin');
+const metricsRoutes = require('./routes/metrics');
 
 // Use routes
 app.use('/auth', authRoutes);
 app.use('/user', userRoutes);
 app.use('/admin', adminRoutes);
+app.use('/api/metrics', metricsRoutes);
 
 // Start server
 app.listen(process.env.PORT, process.env.HOST, () => {
