@@ -95,6 +95,16 @@ The application uses PostgreSQL with two main tables:
 - `last_check_at`: Last session check timestamp (TIMESTAMP)
 - `refresh_count`: Number of token refreshes (INTEGER)
 
+### Metrics Table
+- `id`: Serial primary key
+- `user_id`: Reference to users table (INTEGER)
+- `title`: Metric title (VARCHAR)
+- `value`: Metric value (BIGINT)
+- `unit`: Metric unit (VARCHAR)
+- `icon_name`: Icon name (VARCHAR)
+- `is_apple_health`: Is from Apple Health (BOOLEAN)
+- `date`: Metric date (DATE)
+
 The database tables are automatically created when the application starts if they don't exist.
 
 ## Database Setup
