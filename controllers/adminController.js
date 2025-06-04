@@ -95,7 +95,8 @@ exports.updateUser = (req, res) => {
 
   // Password hashing logic
   if (updateFields.password) {
-    bcrypt.hash(updateFields.password, saltRounds, (err, hash) => {
+    const passwordStr = String(updateFields.password); // Ensure string
+    bcrypt.hash(passwordStr, saltRounds, (err, hash) => {
       if (err) {
         console.error('Error hashing password:', err);
         return res.status(500).json({ success: false, error: 'Password hashing failed' });
@@ -104,7 +105,8 @@ exports.updateUser = (req, res) => {
       processUpdate();
     });
   } else if (updateFields.passwordHash) {
-    bcrypt.hash(updateFields.passwordHash, saltRounds, (err, hash) => {
+    const passwordStr = String(updateFields.passwordHash); // Ensure string
+    bcrypt.hash(passwordStr, saltRounds, (err, hash) => {
       if (err) {
         console.error('Error hashing password:', err);
         return res.status(500).json({ success: false, error: 'Password hashing failed' });
@@ -113,7 +115,8 @@ exports.updateUser = (req, res) => {
       processUpdate();
     });
   } else if (updateFields.password_hash) {
-    bcrypt.hash(updateFields.password_hash, saltRounds, (err, hash) => {
+    const passwordStr = String(updateFields.password_hash); // Ensure string
+    bcrypt.hash(passwordStr, saltRounds, (err, hash) => {
       if (err) {
         console.error('Error hashing password:', err);
         return res.status(500).json({ success: false, error: 'Password hashing failed' });
