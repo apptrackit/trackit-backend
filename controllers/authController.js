@@ -85,9 +85,18 @@ exports.login = async (req, res) => {
         const refreshTokenExpiresAt = new Date();
         refreshTokenExpiresAt.setDate(refreshTokenExpiresAt.getDate() + 365);
 
-        // Store session in database
+        // Store or update session in database using PostgreSQL ON CONFLICT
         db.query(
-          'INSERT OR REPLACE INTO sessions (user_id, device_id, access_token, refresh_token, access_token_expires_at, refresh_token_expires_at) VALUES ($1, $2, $3, $4, $5, $6)',
+          `INSERT INTO sessions (user_id, device_id, access_token, refresh_token, access_token_expires_at, refresh_token_expires_at)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           ON CONFLICT (user_id, device_id) DO UPDATE
+           SET access_token = EXCLUDED.access_token,
+               refresh_token = EXCLUDED.refresh_token,
+               access_token_expires_at = EXCLUDED.access_token_expires_at,
+               refresh_token_expires_at = EXCLUDED.refresh_token_expires_at,
+               last_refresh_at = NOW(),
+               refresh_count = sessions.refresh_count + 1
+          `,
           [user.id, deviceId, accessToken, refreshToken, accessTokenExpiresAt.toISOString(), refreshTokenExpiresAt.toISOString()]
         )
         .then(() => {
