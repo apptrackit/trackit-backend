@@ -39,6 +39,20 @@ const db = new Pool({
     `);
     console.log('Sessions table ready');
 
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS metrics (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        title VARCHAR(255) NOT NULL,
+        value BIGINT NOT NULL,
+        unit VARCHAR(50),
+        icon_name VARCHAR(50),
+        is_apple_health BOOLEAN DEFAULT FALSE,
+        date DATE NOT NULL
+      );
+    `);
+    console.log('Metrics table ready');
+
     client.release();
   } catch (err) {
     console.error('Database error:', err.message);
