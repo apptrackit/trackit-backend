@@ -5,9 +5,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const errorMessage = document.getElementById('errorMessage');
     const successMessage = document.getElementById('successMessage');
 
-    // Check if user is already logged in
-    const isLoggedIn = localStorage.getItem('adminLoggedIn');
-    if (isLoggedIn === 'true') {
+    // Check if user has a valid token
+    const bearerToken = localStorage.getItem('adminBearerToken');
+    const expiresAt = localStorage.getItem('tokenExpiresAt');
+    
+    if (bearerToken && expiresAt && new Date() < new Date(expiresAt)) {
         window.location.href = 'admin-dashboard.html';
     }
 
@@ -31,9 +33,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    localStorage.setItem('adminLoggedIn', 'true');
                     localStorage.setItem('adminBearerToken', data.bearerToken);
-                    localStorage.setItem('adminApiKey', data.adminApiKey);
                     localStorage.setItem('apiKey', data.apiKey);
                     localStorage.setItem('tokenExpiresAt', data.expiresAt);
 

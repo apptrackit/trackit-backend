@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Admin dashboard initializing...');
     
-    // Check if user is logged in and token is valid
+    // Check if user has a valid token
     if (!isValidSession()) {
         console.log('Invalid session, redirecting to login page');
         clearSession();
@@ -14,14 +14,31 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Set up token expiration check
     setupTokenExpirationCheck();
+    
+    // Initialize timeframe buttons
+    initializeTimeframeButtons();
+    
+    // Set up refresh button
+    const refreshBtn = document.getElementById('refresh-users-btn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+            fetchUserData();
+            updateStats();
+        });
+    }
+    
+    // Initial hardware info update
+    updateHardwareInfo();
+    
+    // Update hardware info every minute (60000ms = 1 minute)
+    setInterval(updateHardwareInfo, 60000);
 });
 
 function isValidSession() {
-    const isLoggedIn = localStorage.getItem('adminLoggedIn');
     const bearerToken = localStorage.getItem('adminBearerToken');
     const expiresAt = localStorage.getItem('tokenExpiresAt');
     
-    if (isLoggedIn !== 'true' || !bearerToken || !expiresAt) {
+    if (!bearerToken || !expiresAt) {
         return false;
     }
     
@@ -37,9 +54,7 @@ function isValidSession() {
 }
 
 function clearSession() {
-    localStorage.removeItem('adminLoggedIn');
     localStorage.removeItem('adminBearerToken');
-    localStorage.removeItem('adminApiKey');
     localStorage.removeItem('apiKey');
     localStorage.removeItem('tokenExpiresAt');
 }
@@ -62,20 +77,6 @@ function getAuthHeaders() {
         'Content-Type': 'application/json'
     };
 }
-
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('Admin dashboard initializing...');
-    
-    // Check if user is logged in
-    if (localStorage.getItem('adminLoggedIn') !== 'true') {
-        console.log('Not logged in, redirecting to login page');
-        window.location.href = 'index.html';
-        return;
-    }
-
-    // Initialize the dashboard
-    initializeDashboard();
-});
 
 function initializeDashboard() {
     // Setup event listeners
@@ -588,10 +589,7 @@ async function saveChanges() {
         // Send the updated data to the server
         const response = await fetch('/admin/updateUser', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-admin-api-key': localStorage.getItem('adminApiKey')
-            },
+            headers: getAuthHeaders(),
             body: JSON.stringify(userData)
         });
 
@@ -672,10 +670,7 @@ async function deleteUser(userId) {
     try {
         const response = await fetch('/admin/deleteUser', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-admin-api-key': localStorage.getItem('adminApiKey')
-            },
+            headers: getAuthHeaders(),
             body: JSON.stringify({ id: userId })
         });
 
@@ -705,6 +700,137 @@ async function deleteUser(userId) {
     } catch (error) {
         console.error('Error deleting user:', error);
         showNotification(`Error: ${error.message}`, 'error');
+    }
+}
+
+function initializeTimeframeButtons() {
+    const registrationsButtons = document.querySelectorAll('#registrations-range .timeframe-btn');
+    const activeUsersButtons = document.querySelectorAll('#active-users-range .timeframe-btn');
+
+    function handleButtonClick(buttons, clickedButton) {
+        buttons.forEach(btn => btn.classList.remove('active'));
+        clickedButton.classList.add('active');
+        return clickedButton.dataset.value;
+    }
+
+    registrationsButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const range = handleButtonClick(registrationsButtons, button);
+            updateRegistrations(range);
+        });
+    });
+
+    activeUsersButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const range = handleButtonClick(activeUsersButtons, button);
+            updateActiveUsers(range);
+        });
+    });
+}
+
+// Remove the duplicate DOMContentLoaded listener at the bottom
+// Initialize timeframe buttons and hardware updates only once
+// document.addEventListener('DOMContentLoaded', () => {  // <-- Remove this duplicate
+//     initializeTimeframeButtons();
+//     
+//     const refreshBtn = document.getElementById('refresh-users-btn');
+//     if (refreshBtn) {
+//         refreshBtn.addEventListener('click', () => {
+//             fetchUserData();
+//             updateStats();
+//         });
+//     }
+//     
+//     // Initial hardware info update
+//     updateHardwareInfo();
+//     
+//     // Update hardware info every minute (not multiple times)
+//     setInterval(updateHardwareInfo, 60000);
+// });
+
+async function updateHardwareInfo() {
+    try {
+        const response = await fetch('/admin/hardwareinfo', {
+            headers: getAuthHeaders()
+        });
+        
+        if (!response.ok) {
+            if (response.status === 401) {
+                clearSession();
+                window.location.href = 'index.html';
+                return;
+            }
+            throw new Error('Failed to fetch hardware info');
+        }
+
+        const data = await response.json();
+        if (data.success) {
+            const { temperature, fanSpeed, uptime } = data.hardware;
+
+            // Update CPU temperature
+            const cpuTempElement = document.getElementById('cpu-temp');
+            if (cpuTempElement) {
+                cpuTempElement.textContent = `${temperature.value}°C`;
+                cpuTempElement.className = 'hardware-value temp-' + temperature.color;
+            }
+
+            // Update fan speed
+            const fanSpeedElement = document.getElementById('fan-speed');
+            if (fanSpeedElement) {
+                fanSpeedElement.textContent = `${fanSpeed.value} RPM`;
+                fanSpeedElement.className = 'hardware-value fan-' + fanSpeed.color;
+            }
+
+            // Format and update uptime
+            const uptimeElement = document.getElementById('server-uptime');
+            if (uptimeElement) {
+                const uptimeParts = uptime.split(', ');
+                let totalDays = 0;
+                let hours = 0;
+                let minutes = 0;
+
+                uptimeParts.forEach(part => {
+                    const [value, unit] = part.split(' ');
+                    const numValue = parseInt(value);
+
+                    switch(unit) {
+                        case 'year':
+                        case 'years':
+                            totalDays += numValue * 365;
+                            break;
+                        case 'month':
+                        case 'months':
+                            totalDays += numValue * 30;
+                            break;
+                        case 'week':
+                        case 'weeks':
+                            totalDays += numValue * 7;
+                            break;
+                        case 'day':
+                        case 'days':
+                            totalDays += numValue;
+                            break;
+                        case 'hour':
+                        case 'hours':
+                            hours = numValue;
+                            break;
+                        case 'minute':
+                        case 'minutes':
+                            minutes = numValue;
+                            break;
+                    }
+                });
+
+                const formatNumber = (num) => num.toString().padStart(2, '0');
+                const formattedUptime = `${totalDays}d ${formatNumber(hours)}h ${formatNumber(minutes)}m`;
+                
+                uptimeElement.textContent = formattedUptime;
+                uptimeElement.classList.add('uptime-blue');
+            }
+        }
+    } catch (error) {
+        console.error('Error updating hardware info:', error);
+        showNotification('Failed to update hardware information', 'error');
     }
 }
 
@@ -1011,89 +1137,3 @@ async function updateActiveUsers(range) {
         showNotification('Failed to fetch active users stats', 'error');
     }
 }
-
-async function updateHardwareInfo() {
-    try {
-        const response = await fetch('/admin/hardwareinfo', {
-            headers: getAuthHeaders()
-        });
-        
-        if (!response.ok) {
-            throw new Error('Failed to fetch hardware info');
-        }
-
-        const data = await response.json();
-        if (data.success) {
-            const { temperature, fanSpeed, uptime } = data.hardware;
-
-            // Update CPU temperature
-            const cpuTempElement = document.getElementById('cpu-temp');
-            cpuTempElement.textContent = `${temperature.value}°C`;
-            cpuTempElement.className = 'hardware-value temp-' + temperature.color;
-
-            // Update fan speed
-            const fanSpeedElement = document.getElementById('fan-speed');
-            fanSpeedElement.textContent = `${fanSpeed.value} RPM`;
-            fanSpeedElement.className = 'hardware-value fan-' + fanSpeed.color;
-
-            // Format and update uptime
-            const uptimeElement = document.getElementById('server-uptime');
-            const uptimeParts = uptime.split(', ');
-            let totalDays = 0;
-            let hours = 0;
-            let minutes = 0;
-
-            uptimeParts.forEach(part => {
-                const [value, unit] = part.split(' ');
-                const numValue = parseInt(value);
-
-                switch(unit) {
-                    case 'year':
-                    case 'years':
-                        totalDays += numValue * 365;
-                        break;
-                    case 'month':
-                    case 'months':
-                        totalDays += numValue * 30;
-                        break;
-                    case 'week':
-                    case 'weeks':
-                        totalDays += numValue * 7;
-                        break;
-                    case 'day':
-                    case 'days':
-                        totalDays += numValue;
-                        break;
-                    case 'hour':
-                    case 'hours':
-                        hours = numValue;
-                        break;
-                    case 'minute':
-                    case 'minutes':
-                        minutes = numValue;
-                        break;
-                }
-            });
-
-            // Format the numbers to ensure they're always two digits
-            const formatNumber = (num) => num.toString().padStart(2, '0');
-            
-            // Format uptime as a single string
-            const formattedUptime = `${totalDays}d ${formatNumber(hours)}h ${formatNumber(minutes)}m`;
-            
-            uptimeElement.textContent = formattedUptime;
-            // Add the blue color class
-            uptimeElement.classList.add('uptime-blue');
-
-        }
-    } catch (error) {
-        console.error('Error updating hardware info:', error);
-        showNotification('Failed to update hardware information', 'error');
-    }
-}
-
-// Initial hardware info update
-updateHardwareInfo();
-
-// Update hardware info every minute
-setInterval(updateHardwareInfo, 60000);
