@@ -10,9 +10,9 @@ const swaggerSpecs = require('./utils/swagger');
 app.use(express.json());
 
 // Conditionally enable Swagger UI
-const isProduction = process.env.NODE_ENV === 'prod' || process.env.NODE_ENV === 'production';
+const isDevelopment = process.env.NODE_ENV !== 'prod' && process.env.NODE_ENV !== 'production';
 
-if (!isProduction) {
+if (isDevelopment) {
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
     swaggerOptions: {
       persistAuthorization: true,
@@ -66,7 +66,7 @@ initializeDatabase()
 
     app.listen(process.env.PORT, process.env.HOST, () => {
       logger.info(`Server running on http://${process.env.HOST}:${process.env.PORT}`);
-      if (!isProduction) {
+      if (isDevelopment) {
         logger.info(`Swagger UI available at http://${process.env.HOST}:${process.env.PORT}/api-docs`);
       }
     });

@@ -26,13 +26,25 @@ const options = {
           type: 'http',
           scheme: 'bearer',
           bearerFormat: 'JWT',
-          description: 'JWT token for authentication'
+          description: 'JWT token for user authentication'
+        },
+        AdminBearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          description: 'JWT token for admin authentication'
         }
       }
     },
     security: [
       {
         ApiKeyAuth: []
+      },
+      {
+        BearerAuth: []
+      },
+      {
+        AdminBearerAuth: []
       }
     ]
   },
