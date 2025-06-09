@@ -40,6 +40,18 @@ const initializeDatabase = async () => {
     `);
     logger.info('Sessions table ready');
 
+    // Create admin_sessions table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS admin_sessions (
+        id SERIAL PRIMARY KEY,
+        token TEXT NOT NULL UNIQUE,
+        username TEXT NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP NOT NULL
+      );
+    `);
+    logger.info('Admin sessions table ready');
+
 
     // Create metric_types table
     await client.query(`

@@ -90,6 +90,36 @@ const validateToken = async (req, res, next) => {
   }
 };
 
+// Validate admin bearer token
+const validateAdminToken = async (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ success: false, error: 'Bearer token required' });
+  }
+
+  const token = authHeader.split(' ')[1];
+  
+  try {
+    const { db } = require('./database');
+    const result = await db.query(
+      'SELECT * FROM admin_sessions WHERE token = $1 AND expires_at > NOW()',
+      [token]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ success: false, error: 'Invalid or expired admin token' });
+    }
+
+    const session = result.rows[0];
+    req.adminUser = { username: session.username };
+    next();
+  } catch (error) {
+    console.error('Error validating admin token:', error);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+};
+
 // Generate device ID from user agent and IP
 const generateDeviceId = (req) => {
   const userAgent = req.headers['user-agent'] || 'unknown';
@@ -101,5 +131,6 @@ module.exports = {
   validateApiKey,
   validateAdminApiKey,
   validateToken,
+  validateAdminToken,
   generateDeviceId
 };

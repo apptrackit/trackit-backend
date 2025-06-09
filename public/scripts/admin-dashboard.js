@@ -1,6 +1,71 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Admin dashboard initializing...');
     
+    // Check if user is logged in and token is valid
+    if (!isValidSession()) {
+        console.log('Invalid session, redirecting to login page');
+        clearSession();
+        window.location.href = 'index.html';
+        return;
+    }
+
+    // Initialize the dashboard
+    initializeDashboard();
+    
+    // Set up token expiration check
+    setupTokenExpirationCheck();
+});
+
+function isValidSession() {
+    const isLoggedIn = localStorage.getItem('adminLoggedIn');
+    const bearerToken = localStorage.getItem('adminBearerToken');
+    const expiresAt = localStorage.getItem('tokenExpiresAt');
+    
+    if (isLoggedIn !== 'true' || !bearerToken || !expiresAt) {
+        return false;
+    }
+    
+    // Check if token has expired
+    const now = new Date();
+    const expiration = new Date(expiresAt);
+    
+    if (now >= expiration) {
+        return false;
+    }
+    
+    return true;
+}
+
+function clearSession() {
+    localStorage.removeItem('adminLoggedIn');
+    localStorage.removeItem('adminBearerToken');
+    localStorage.removeItem('adminApiKey');
+    localStorage.removeItem('apiKey');
+    localStorage.removeItem('tokenExpiresAt');
+}
+
+function setupTokenExpirationCheck() {
+    // Check token validity every 5 minutes
+    setInterval(() => {
+        if (!isValidSession()) {
+            alert('Your session has expired. Please log in again.');
+            clearSession();
+            window.location.href = 'index.html';
+        }
+    }, 5 * 60 * 1000); // 5 minutes
+}
+
+function getAuthHeaders() {
+    const bearerToken = localStorage.getItem('adminBearerToken');
+    return {
+        'Authorization': `Bearer ${bearerToken}`,
+        'Content-Type': 'application/json'
+    };
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Admin dashboard initializing...');
+    
     // Check if user is logged in
     if (localStorage.getItem('adminLoggedIn') !== 'true') {
         console.log('Not logged in, redirecting to login page');
@@ -74,10 +139,15 @@ async function fetchUserData() {
     
     try {
         const response = await fetch('/admin/getAllUserData', {
-            headers: { 'x-admin-api-key': localStorage.getItem('adminApiKey') }
+            headers: getAuthHeaders()
         });
         
         if (!response.ok) {
+            if (response.status === 401) {
+                clearSession();
+                window.location.href = 'index.html';
+                return;
+            }
             throw new Error(`HTTP error! Status: ${response.status}`);
         }
         
@@ -105,7 +175,7 @@ async function updateStats() {
     try {
         // Get total users count
         const response = await fetch('/admin/getAllUserData', {
-            headers: { 'x-admin-api-key': localStorage.getItem('adminApiKey') }
+            headers: getAuthHeaders()
         });
 
         const data = await response.json();
@@ -156,14 +226,16 @@ async function createUser() {
     try {
         const response = await fetch('/admin/createUser', {
             method: 'POST',
-            headers: {
-                'x-admin-api-key': localStorage.getItem('adminApiKey'),
-                'Content-Type': 'application/json'
-            },
+            headers: getAuthHeaders(),
             body: JSON.stringify({ username, email, password })
         });
 
         if (!response.ok) {
+            if (response.status === 401) {
+                clearSession();
+                window.location.href = 'index.html';
+                return;
+            }
             throw new Error(`HTTP error! Status: ${response.status}`);
         }
 
@@ -188,11 +260,18 @@ async function createUser() {
     }
 }
 
-function handleLogout() {
-    localStorage.removeItem('adminLoggedIn');
-    localStorage.removeItem('apiKey');
-    localStorage.removeItem('adminApiKey');
-    window.location.href = 'index.html';
+async function handleLogout() {
+    try {
+        await fetch('/admin/logout', {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+    } catch (error) {
+        console.error('Error during logout:', error);
+    } finally {
+        clearSession();
+        window.location.href = 'index.html';
+    }
 }
 
 function showSuccess(message) {
@@ -899,9 +978,7 @@ document.querySelectorAll('.modal').forEach(modal => {
 async function updateRegistrations(range) {
     try {
         const response = await fetch(`/admin/registrations?range=${range}`, {
-            headers: {
-                'x-admin-api-key': localStorage.getItem('adminApiKey')
-            }
+            headers: getAuthHeaders()
         });
         const data = await response.json();
         const element = document.getElementById('new-registrations');
@@ -920,9 +997,7 @@ async function updateRegistrations(range) {
 async function updateActiveUsers(range) {
     try {
         const response = await fetch(`/admin/active-users?range=${range}`, {
-            headers: {
-                'x-admin-api-key': localStorage.getItem('adminApiKey')
-            }
+            headers: getAuthHeaders()
         });
         const data = await response.json();
         const element = document.getElementById('active-users');
@@ -937,51 +1012,10 @@ async function updateActiveUsers(range) {
     }
 }
 
-function initializeTimeframeButtons() {
-    const registrationsButtons = document.querySelectorAll('#registrations-range .timeframe-btn');
-    const activeUsersButtons = document.querySelectorAll('#active-users-range .timeframe-btn');
-
-    function handleButtonClick(buttons, clickedButton) {
-        buttons.forEach(btn => btn.classList.remove('active'));
-        clickedButton.classList.add('active');
-        return clickedButton.dataset.value;
-    }
-
-    registrationsButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const range = handleButtonClick(registrationsButtons, button);
-            updateRegistrations(range);
-        });
-    });
-
-    activeUsersButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const range = handleButtonClick(activeUsersButtons, button);
-            updateActiveUsers(range);
-        });
-    });
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    initializeTimeframeButtons();
-    loadDashboardData();
-    
-    const refreshBtn = document.getElementById('refresh-users-btn');
-    if (refreshBtn) {
-        refreshBtn.addEventListener('click', () => {
-            fetchUserData();
-            updateStats();
-        });
-    }
-});
-
-// Function to update hardware information
 async function updateHardwareInfo() {
     try {
         const response = await fetch('/admin/hardwareinfo', {
-            headers: {
-                'x-admin-api-key': localStorage.getItem('adminApiKey')
-            }
+            headers: getAuthHeaders()
         });
         
         if (!response.ok) {
@@ -1020,7 +1054,7 @@ async function updateHardwareInfo() {
                         break;
                     case 'month':
                     case 'months':
-                        totalDays += numValue * 30; // Using 30 days as an average month
+                        totalDays += numValue * 30;
                         break;
                     case 'week':
                     case 'weeks':
