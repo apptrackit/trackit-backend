@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
-const db = require('./database');
+const { db } = require('./database');
 const crypto = require('crypto');
+const logger = require('./utils/logger');
 
 const validateApiKey = (req, res, next) => {
   // Check for API key in header
@@ -11,21 +12,26 @@ const validateApiKey = (req, res, next) => {
   const apiKey = headerApiKey || queryApiKey;
   
   if (!apiKey) {
+    logger.warn('API key validation failed - No API key provided');
     return res.status(401).json({ error: 'API key is required' });
   }
   
   if (apiKey !== process.env.API_KEY) {
+    logger.warn('API key validation failed - Invalid API key provided');
     return res.status(403).json({ error: 'Invalid API key' });
   }
   
+  logger.info('API key validation successful');
   next();
 };
 
 const validateAdminApiKey = (req, res, next) => {
   const adminApiKey = req.headers['x-admin-api-key'];
   if (!adminApiKey || adminApiKey !== process.env.ADMIN_API_KEY) {
+    logger.warn('Admin API key validation failed - Invalid or missing admin API key');
     return res.status(401).json({ success: false, error: 'Invalid admin API key' });
   }
+  logger.info('Admin API key validation successful');
   next();
 };
 
@@ -33,6 +39,7 @@ const validateToken = async (req, res, next) => {
   const token = req.headers['authorization']?.split(' ')[1];
   
   if (!token) {
+    logger.warn('Token validation failed - No authentication token provided');
     return res.status(401).json({ error: 'Authentication token is required' });
   }
 
@@ -49,13 +56,14 @@ const validateToken = async (req, res, next) => {
     const session = sessionResult.rows[0];
 
     if (!session) {
+      logger.warn(`Token validation failed - Invalid or expired session for user: ${decoded.userId}`);
       return res.status(401).json({ error: 'Invalid or expired session' });
     }
 
     // Add user info to request
     // Ensure the decoded userId matches the user_id in the session table for added security
     if (decoded.userId !== session.user_id) {
-         console.error('Token user ID does not match session user ID');
+         logger.error(`Token validation failed - Token user ID mismatch: token=${decoded.userId}, session=${session.user_id}`);
          return res.status(401).json({ error: 'Token mismatch' });
     }
 
@@ -64,14 +72,17 @@ const validateToken = async (req, res, next) => {
       username: decoded.username // Username can still come from the token payload
     };
 
+    logger.info(`Token validation successful for user: ${decoded.username}`);
     next();
 
   } catch (error) {
-    console.error('Error in validateToken middleware:', error);
+    logger.error('Error in validateToken middleware:', error);
     // Specific error handling for invalid tokens
     if (error.name === 'TokenExpiredError') {
+        logger.warn('Token validation failed - Token expired');
         return res.status(401).json({ error: 'Token expired' });
     } else if (error.name === 'JsonWebTokenError') {
+        logger.warn('Token validation failed - Invalid token format');
         return res.status(401).json({ error: 'Invalid token' });
     } else {
         return res.status(500).json({ error: 'Internal server error during token validation' });

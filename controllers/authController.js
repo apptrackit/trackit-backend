@@ -1,7 +1,8 @@
-const db = require('../database');
+const { db } = require('../database');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const logger = require('../utils/logger');
 
 // Generate refresh token
 const generateRefreshToken = () => {
@@ -35,7 +36,10 @@ const getActiveSessionsCount = (userId) => {
 exports.login = async (req, res) => {
   const { username, password } = req.body;
   
+  logger.info(`Login attempt for username: ${username}`);
+  
   if (!username || !password) {
+    logger.warn('Login failed - Missing username or password');
     return res.status(400).json({ success: false, error: 'Username and password are required' });
   }
 
@@ -43,6 +47,7 @@ exports.login = async (req, res) => {
     .then(async result => {
       const user = result.rows[0];
       if (!user) {
+        logger.warn(`Login failed - User not found: ${username}`);
         return res.json({ success: false, authenticated: false, message: 'User not found' });
       }
       
@@ -50,6 +55,7 @@ exports.login = async (req, res) => {
         const passwordMatch = await bcrypt.compare(password, user.password);
         
         if (!passwordMatch) {
+          logger.warn(`Login failed - Invalid password for user: ${username}`);
           return res.json({ 
             success: false, 
             authenticated: false,
@@ -60,6 +66,7 @@ exports.login = async (req, res) => {
         // Check active sessions count
         const activeSessions = await getActiveSessionsCount(user.id);
         if (activeSessions >= 5) {
+          logger.warn(`Login failed - Maximum sessions reached for user: ${username}`);
           return res.status(403).json({
             success: false,
             error: 'Maximum number of active sessions reached. Please logout from another device first.'
@@ -67,6 +74,7 @@ exports.login = async (req, res) => {
         }
 
         const deviceId = generateDeviceId(req);
+        logger.info(`Login successful - User: ${username}, Device: ${deviceId}`);
 
         // Create access token (7 days)
         const accessToken = jwt.sign(
@@ -100,6 +108,7 @@ exports.login = async (req, res) => {
           [user.id, deviceId, accessToken, refreshToken, accessTokenExpiresAt.toISOString(), refreshTokenExpiresAt.toISOString()]
         )
         .then(() => {
+          logger.info(`Session created/updated for user: ${username}, device: ${deviceId}`);
           res.json({ 
             success: true, 
             authenticated: true,
@@ -116,16 +125,16 @@ exports.login = async (req, res) => {
           });
         })
         .catch(err => {
-          console.error('Error creating session:', err);
+          logger.error('Error creating/updating session during login:', err);
           return res.status(500).json({ success: false, error: 'Failed to create session' });
         });
       } catch (error) {
-        console.error('Error comparing passwords:', error);
+        logger.error('Error comparing passwords during login:', error);
         res.status(500).json({ success: false, error: 'Internal server error' });
       }
     })
     .catch(err => {
-      console.error('Error querying database:', err.message);
+      logger.error('Error querying user during login:', err);
       return res.status(500).json({ success: false, error: 'Database error' });
     });
 };
@@ -134,7 +143,10 @@ exports.login = async (req, res) => {
 exports.refreshToken = async (req, res) => {
   const { refreshToken, deviceId } = req.body;
   
+  logger.info(`Token refresh attempt for device: ${deviceId}`);
+  
   if (!refreshToken || !deviceId) {
+    logger.warn('Token refresh failed - Missing refresh token or device ID');
     return res.status(400).json({ success: false, error: 'Refresh token and device ID are required' });
   }
 
@@ -145,6 +157,7 @@ exports.refreshToken = async (req, res) => {
   .then(async result => {
     const session = result.rows[0];
     if (!session) {
+      logger.warn(`Token refresh failed - Invalid or expired refresh token for device: ${deviceId}`);
       return res.status(401).json({ 
         success: false, 
         error: 'Invalid or expired refresh token' 
@@ -154,6 +167,7 @@ exports.refreshToken = async (req, res) => {
     db.query('SELECT * FROM users WHERE id = $1', [session.user_id])
       .then(userResult => {
         const user = userResult.rows[0];
+        logger.info(`Token refreshed successfully for user: ${user.username}, device: ${deviceId}`);
 
         // Create new access token
         const newAccessToken = jwt.sign(
@@ -186,17 +200,17 @@ exports.refreshToken = async (req, res) => {
           });
         })
         .catch(err => {
-          console.error('Error updating tokens:', err);
+          logger.error('Error updating tokens during refresh:', err);
           return res.status(500).json({ success: false, error: 'Failed to refresh tokens' });
         });
       })
       .catch(err => {
-        console.error('Error getting user:', err);
+        logger.error('Error getting user during token refresh:', err);
         return res.status(500).json({ success: false, error: 'Database error' });
       });
   })
   .catch(err => {
-    console.error('Error checking refresh token:', err);
+    logger.error('Error checking refresh token:', err);
     return res.status(500).json({ success: false, error: 'Database error' });
   });
 };
@@ -205,16 +219,20 @@ exports.refreshToken = async (req, res) => {
 exports.logout = async (req, res) => {
   const { deviceId, userId } = req.body;
   
+  logger.info(`Logout attempt for user: ${userId}, device: ${deviceId}`);
+  
   if (!deviceId || !userId) {
+    logger.warn('Logout failed - Missing device ID or user ID');
     return res.status(400).json({ success: false, error: 'Device ID and User ID are required' });
   }
 
   db.query('DELETE FROM sessions WHERE device_id = $1 AND user_id = $2', [deviceId, userId])
     .then(() => {
+      logger.info(`User logged out successfully - User: ${userId}, Device: ${deviceId}`);
       res.json({ success: true, message: 'Logged out successfully' });
     })
     .catch(err => {
-      console.error('Error deleting session:', err);
+      logger.error('Error deleting session during logout:', err);
       return res.status(500).json({ success: false, error: 'Failed to logout' });
     });
 };
@@ -223,16 +241,20 @@ exports.logout = async (req, res) => {
 exports.logoutAll = async (req, res) => {
   const { userId } = req.body;
   
+  logger.info(`Logout from all devices attempt for user: ${userId}`);
+  
   if (!userId) {
+    logger.warn('Logout all failed - Missing user ID');
     return res.status(400).json({ success: false, error: 'User ID is required' });
   }
 
   db.query('DELETE FROM sessions WHERE user_id = $1', [userId])
     .then(() => {
+      logger.info(`User logged out from all devices successfully - User: ${userId}`);
       res.json({ success: true, message: 'Logged out from all devices successfully' });
     })
     .catch(err => {
-      console.error('Error deleting sessions:', err);
+      logger.error('Error deleting all sessions during logout:', err);
       return res.status(500).json({ success: false, error: 'Failed to logout from all devices' });
     });
 };
@@ -241,7 +263,10 @@ exports.logoutAll = async (req, res) => {
 exports.listSessions = async (req, res) => {
   const { userId } = req.body;
   
+  logger.info(`Listing sessions for user: ${userId}`);
+  
   if (!userId) {
+    logger.warn('List sessions failed - Missing user ID');
     return res.status(400).json({ success: false, error: 'User ID is required' });
   }
 
@@ -250,13 +275,14 @@ exports.listSessions = async (req, res) => {
     [userId]
   )
   .then(result => {
+    logger.info(`Sessions listed successfully for user: ${userId}, count: ${result.rows.length}`);
     res.json({
       success: true,
       sessions: result.rows
     });
   })
   .catch(err => {
-    console.error('Error getting sessions:', err);
+    logger.error('Error getting sessions:', err);
     return res.status(500).json({ success: false, error: 'Failed to get sessions' });
   });
 };
@@ -266,6 +292,7 @@ exports.checkSession = async (req, res) => {
   const token = req.headers['authorization']?.split(' ')[1];
   
   if (!token) {
+    logger.warn('Session check failed - No token provided');
     return res.json({ 
       success: false, 
       isAuthenticated: false, 
@@ -283,6 +310,7 @@ exports.checkSession = async (req, res) => {
     .then(result =>  {
       const session = result.rows[0];
       if (!session) {
+        logger.warn(`Session check failed - Session expired or invalid for user: ${decoded.userId}`);
         return res.json({ 
           success: false, 
           isAuthenticated: false, 
@@ -292,7 +320,7 @@ exports.checkSession = async (req, res) => {
 
       db.query('UPDATE sessions SET last_check_at = NOW() WHERE id = $1', [session.id])
         .catch(err => {
-          console.error('Error updating last_check_at:', err);
+          logger.error('Error updating last_check_at:', err);
         });
         
       db.query('SELECT id, username, email FROM users WHERE id = $1', 
@@ -301,7 +329,7 @@ exports.checkSession = async (req, res) => {
       .then(userResult => {
         const user = userResult.rows[0];
         if (!user) {
-          console.error('Error getting user info:', err);
+          logger.error(`Session check failed - User not found: ${decoded.userId}`);
           return res.status(500).json({ 
             success: false, 
             isAuthenticated: false, 
@@ -309,6 +337,7 @@ exports.checkSession = async (req, res) => {
           });
         }
 
+        logger.info(`Session check successful for user: ${user.username}`);
         res.json({ 
           success: true, 
           isAuthenticated: true,
@@ -318,7 +347,7 @@ exports.checkSession = async (req, res) => {
         });
       })
       .catch(err => {
-        console.error('Error getting user info:', err);
+        logger.error('Error getting user info during session check:', err);
         return res.status(500).json({ 
           success: false, 
           isAuthenticated: false, 
@@ -327,7 +356,7 @@ exports.checkSession = async (req, res) => {
       });
     })
     .catch(err => {
-      console.error('Error checking session:', err);
+      logger.error('Error checking session in database:', err);
       return res.status(500).json({ 
         success: false, 
         isAuthenticated: false, 
@@ -335,6 +364,7 @@ exports.checkSession = async (req, res) => {
       });
     });
   } catch (error) {
+    logger.warn('Session check failed - Invalid token');
     return res.json({ 
       success: false, 
       isAuthenticated: false, 

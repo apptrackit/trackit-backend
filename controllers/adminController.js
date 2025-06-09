@@ -1,29 +1,34 @@
-const db = require('../database');
+const { db } = require('../database');
 const bcrypt = require('bcrypt');
 require('dotenv').config();
 const saltRounds = parseInt(process.env.SALT_ROUNDS);
 const { exec } = require('child_process');
 const util = require('util');
 const execPromise = util.promisify(exec);
+const logger = require('../utils/logger');
 
 exports.getAllUserData = (req, res) => {
+  logger.info('Admin request - Getting all user data');
 
   db.query('SELECT * FROM users')
     .then(result => {
+      logger.info(`Admin - Retrieved ${result.rows.length} users`);
       res.json({ success: true, users: result.rows });
     })
     .catch(err => {
-      console.error('Error querying database:', err.message);
+      logger.error('Admin - Error querying all users:', err);
       return res.status(500).json({ success: false, error: 'Database error' });
     });
 };
-
 
 // Get user info - updated to use request body instead of query parameters
 exports.getUserInfo = (req, res) => {
   const { username } = req.body;
 
+  logger.info(`Admin request - Getting user info for: ${username}`);
+
   if (!username) {
+    logger.warn('Admin - Get user info failed - Missing username');
     return res.status(400).json({ success: false, error: 'Username is required' });
   }
 
@@ -31,37 +36,46 @@ exports.getUserInfo = (req, res) => {
     .then(result => {
       const user = result.rows[0];
       if (!user) {
+        logger.warn(`Admin - User not found: ${username}`);
         return res.status(404).json({ success: false, error: 'User not found' });
       }
+      logger.info(`Admin - Retrieved user info for: ${username}`);
       res.json({ ...user });
     })
     .catch(err => {
-      console.error('Error querying database:', err.message);
+      logger.error('Admin - Error querying user info:', err);
       return res.status(500).json({ success: false, error: 'Database error' });
     });
 };
 
 // Get all emails
 exports.getAllEmails = (req, res) => {
+  logger.info('Admin request - Getting all emails');
+
   db.query('SELECT email FROM users')
     .then(result => {
       const emails = result.rows.map(row => row.email);
+      const uniqueEmails = emails.filter((email, index, self) => self.indexOf(email) === index);
+      logger.info(`Admin - Retrieved ${uniqueEmails.length} unique emails`);
       res.json({
         success: true,
-        emails: emails.filter((email, index, self) => self.indexOf(email) === index)
+        emails: uniqueEmails
       });
     })
     .catch(err => {
-      console.error('Error querying database:', err.message);
+      logger.error('Admin - Error querying emails:', err);
       return res.status(500).json({ success: false, error: 'Database error' });
     });
 };
 
 // New function to update user data
 exports.updateUser = (req, res) => {
-
   const userData = req.body;
+  
+  logger.info(`Admin request - Updating user with ID: ${userData.id}`);
+  
   if (!userData.id) {
+    logger.warn('Admin - Update user failed - Missing user ID');
     return res.status(400).json({ success: false, error: 'User ID is required' });
   }
   const { id, ...updateFields } = userData;
@@ -71,6 +85,7 @@ exports.updateUser = (req, res) => {
     const fields = Object.keys(updateFields);
     const values = Object.values(updateFields);
     if (fields.length === 0) {
+      logger.warn(`Admin - Update user failed - No fields to update for user ID: ${id}`);
       return res.status(400).json({ success: false, error: 'No fields to update' });
     }
     const setClause = fields.map((field, index) => `${field} = $${index + 1}`).join(', ');
@@ -79,8 +94,10 @@ exports.updateUser = (req, res) => {
     db.query(sql, values)
       .then(result => {
         if (result.rowCount === 0) {
+          logger.warn(`Admin - Update user failed - User not found or no changes: ${id}`);
           return res.status(404).json({ success: false, error: 'User not found or no changes made' });
         }
+        logger.info(`Admin - User updated successfully - ID: ${id}, changes: ${result.rowCount}`);
         res.json({
           success: true,
           message: 'User updated successfully',
@@ -88,37 +105,37 @@ exports.updateUser = (req, res) => {
         });
       })
       .catch(err => {
-        console.error('Error updating user:', err.message);
+        logger.error('Admin - Error updating user:', err);
         return res.status(500).json({ success: false, error: 'Database error: ' + err.message });
       });
   };
 
   // Password hashing logic
   if (updateFields.password) {
-    const passwordStr = String(updateFields.password); // Ensure string
+    const passwordStr = String(updateFields.password);
     bcrypt.hash(passwordStr, saltRounds, (err, hash) => {
       if (err) {
-        console.error('Error hashing password:', err);
+        logger.error('Admin - Error hashing password during update:', err);
         return res.status(500).json({ success: false, error: 'Password hashing failed' });
       }
       updateFields.password = hash;
       processUpdate();
     });
   } else if (updateFields.passwordHash) {
-    const passwordStr = String(updateFields.passwordHash); // Ensure string
+    const passwordStr = String(updateFields.passwordHash);
     bcrypt.hash(passwordStr, saltRounds, (err, hash) => {
       if (err) {
-        console.error('Error hashing password:', err);
+        logger.error('Admin - Error hashing passwordHash during update:', err);
         return res.status(500).json({ success: false, error: 'Password hashing failed' });
       }
       updateFields.passwordHash = hash;
       processUpdate();
     });
   } else if (updateFields.password_hash) {
-    const passwordStr = String(updateFields.password_hash); // Ensure string
+    const passwordStr = String(updateFields.password_hash);
     bcrypt.hash(passwordStr, saltRounds, (err, hash) => {
       if (err) {
-        console.error('Error hashing password:', err);
+        logger.error('Admin - Error hashing password_hash during update:', err);
         return res.status(500).json({ success: false, error: 'Password hashing failed' });
       }
       updateFields.password_hash = hash;
@@ -133,21 +150,23 @@ exports.updateUser = (req, res) => {
 exports.deleteUser = (req, res) => {
   const { id } = req.body;
 
+  logger.info(`Admin request - Deleting user with ID: ${id}`);
+
   if (!id) {
+    logger.warn('Admin - Delete user failed - Missing user ID');
     return res.status(400).json({ success: false, error: 'User ID is required' });
   }
 
   const sql = 'DELETE FROM users WHERE id = $1';
 
-  console.log('Executing delete SQL:', sql); // Log the SQL for debugging
-  console.log('With ID:', id); // Log the ID
-
   db.query(sql, [id])
     .then(result => {
       if (result.rowCount === 0) {
+        logger.warn(`Admin - Delete user failed - User not found: ${id}`);
         return res.status(404).json({ success: false, error: 'User not found' });
       }
 
+      logger.info(`Admin - User deleted successfully - ID: ${id}`);
       res.json({
         success: true,
         message: 'User deleted successfully',
@@ -155,7 +174,7 @@ exports.deleteUser = (req, res) => {
       });
     })
     .catch(err => {
-      console.error('Error deleting user:', err.message);
+      logger.error('Admin - Error deleting user:', err);
       return res.status(500).json({ success: false, error: 'Database error: ' + err.message });
     });
 };
@@ -163,8 +182,11 @@ exports.deleteUser = (req, res) => {
 exports.createUser = (req, res) => {
   const { username, email, password } = req.body;
 
+  logger.info(`Admin request - Creating user: ${username}, email: ${email}`);
+
   // Validate required fields
   if (!username || !email || !password) {
+    logger.warn('Admin - Create user failed - Missing required fields');
     return res.status(400).json({ 
       success: false, 
       error: 'Username, email, and password are required' 
@@ -174,6 +196,7 @@ exports.createUser = (req, res) => {
   // Validate email format
   const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/;
   if (!emailRegex.test(email)) {
+    logger.warn(`Admin - Create user failed - Invalid email format: ${email}`);
     return res.status(400).json({ success: false, error: 'Invalid email format' });
   }
 
@@ -182,6 +205,7 @@ exports.createUser = (req, res) => {
     .then(result => {
       const existingUser = result.rows[0];
       if (existingUser) {
+        logger.warn(`Admin - Create user failed - Username or email already exists: ${username}/${email}`);
         return res.status(400).json({ 
           success: false, 
           error: 'Username or email already exists' 
@@ -191,7 +215,7 @@ exports.createUser = (req, res) => {
       // Hash the password
       bcrypt.hash(password, saltRounds, (err, hashedPassword) => {
         if (err) {
-          console.error('Error hashing password:', err);
+          logger.error('Admin - Error hashing password during user creation:', err);
           return res.status(500).json({ success: false, error: 'Password hashing failed' });
         }
 
@@ -203,6 +227,7 @@ exports.createUser = (req, res) => {
 
         db.query(sql, [username, email, hashedPassword])
           .then(result => {
+            logger.info(`Admin - User created successfully: ${username}`);
             res.json({
               success: true,
               message: 'User created successfully',
@@ -210,19 +235,22 @@ exports.createUser = (req, res) => {
             });
           })
           .catch(err => {
-            console.error('Error creating user:', err.message);
+            logger.error('Admin - Error creating user in database:', err);
             return res.status(500).json({ success: false, error: 'Database error' });
           });
       });
     })
     .catch(err => {
-      console.error('Error checking existing user:', err.message);
+      logger.error('Admin - Error checking existing user:', err);
       return res.status(500).json({ success: false, error: 'Database error' });
     });
 };
 
 exports.getActiveUsers = (req, res) => {
   const { range } = req.query;
+  
+  logger.info(`Admin request - Getting active users for range: ${range}`);
+  
   let timeFilter;
   
   const now = new Date();
@@ -240,6 +268,7 @@ exports.getActiveUsers = (req, res) => {
       timeFilter = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
       break;
     default:
+      logger.warn(`Admin - Get active users failed - Invalid range: ${range}`);
       return res.status(400).json({ success: false, error: 'Invalid range parameter' });
   }
 
@@ -251,20 +280,25 @@ exports.getActiveUsers = (req, res) => {
 
   db.query(sql, [timeFilter.toISOString()])
     .then(result => {
+      const count = result.rows[0] ? result.rows[0].count : 0;
+      logger.info(`Admin - Active users retrieved - Range: ${range}, Count: ${count}`);
       res.json({
         success: true,
-        count: result.rows[0] ? result.rows[0].count : 0,
+        count: count,
         range: range
       });
     })
     .catch(err => {
-      console.error('Error getting active users:', err.message);
+      logger.error('Admin - Error getting active users:', err);
       return res.status(500).json({ success: false, error: 'Database error' });
     });
 };
 
 exports.getRegistrations = (req, res) => {
   const { range } = req.query;
+  
+  logger.info(`Admin request - Getting registrations for range: ${range}`);
+  
   let timeFilter;
   
   const now = new Date();
@@ -282,6 +316,7 @@ exports.getRegistrations = (req, res) => {
       timeFilter = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
       break;
     default:
+      logger.warn(`Admin - Get registrations failed - Invalid range: ${range}`);
       return res.status(400).json({ success: false, error: 'Invalid range parameter' });
   }
 
@@ -293,19 +328,23 @@ exports.getRegistrations = (req, res) => {
 
   db.query(sql, [timeFilter.toISOString()])
     .then(result => {
+      const count = result.rows[0] ? result.rows[0].count : 0;
+      logger.info(`Admin - Registrations retrieved - Range: ${range}, Count: ${count}`);
       res.json({
         success: true,
-        count: result.rows[0] ? result.rows[0].count : 0,
+        count: count,
         range: range
       });
     })
     .catch(err => {
-      console.error('Error getting registrations:', err.message);
+      logger.error('Admin - Error getting registrations:', err);
       return res.status(500).json({ success: false, error: 'Database error' });
     });
 };
 
 exports.getHardwareInfo = async (req, res) => {
+  logger.info('Admin request - Getting hardware info');
+  
   try {
     // Get temperature and fan speed using AWK
     const { stdout: tempFanOutput } = await execPromise(`sensors | awk '
@@ -349,6 +388,7 @@ exports.getHardwareInfo = async (req, res) => {
       fanColor = 'blue';
     }
 
+    logger.info(`Admin - Hardware info retrieved - Temp: ${temp}°C, Fan: ${fan}RPM, Uptime: ${uptime}`);
     res.json({
       success: true,
       hardware: {
@@ -364,7 +404,7 @@ exports.getHardwareInfo = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error getting hardware info:', error);
+    logger.error('Admin - Error getting hardware information:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to get hardware information',
