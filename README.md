@@ -1,19 +1,20 @@
 # TrackIt Backend
 
-A REST API for user management with authentication.
+A comprehensive REST API for user management, authentication, and metric tracking with admin dashboard.
 
 ## Prerequisites
 
 - Node.js (v14 or later)
 - npm
 - PostgreSQL
+- lm-sensors (for hardware monitoring on Linux)
 
 ## Installation
 
 1. Clone the repository:
 ```bash
 git clone https://github.com/apptrackit/trackit-backend
-cd trackit_backend
+cd trackit-backend
 ```
 
 2. Install dependencies:
@@ -35,7 +36,7 @@ JWT_SECRET=your_secure_jwt_secret_here
 
 # Server Configuration
 PORT=3000
-HOST=localhost
+HOST=0.0.0.0
 
 # Security Settings
 SALT=10  # Number of salt rounds for password hashing
@@ -44,6 +45,9 @@ SALT=10  # Number of salt rounds for password hashing
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=admin
 ADMIN_API_KEY=your_admin_api_key_here
+
+# Environment
+NODE_ENV=development
 ```
 
 ## Project Structure
@@ -51,29 +55,52 @@ ADMIN_API_KEY=your_admin_api_key_here
 ```
 trackit-backend/
 │
-├── app.js                 # Main application entry point
-├── auth.js                # Authentication middleware
-├── database.js            # Database connection and setup
+├── app.js                    # Main application entry point
+├── auth.js                   # Authentication middleware
+├── database.js               # Database connection and setup
 │
-├── controllers/           # Business logic
-│   ├── authController.js  # Authentication logic
-│   ├── userController.js  # User management logic
-│   └── adminController.js # Admin operations
+├── controllers/              # Business logic
+│   ├── authController.js     # Authentication logic
+│   ├── userController.js     # User management logic
+│   ├── adminController.js    # Admin operations
+│   └── metricController.js   # Metric tracking logic
 │
-├── routes/                # API route definitions
-│   ├── auth.js           # Authentication routes
-│   ├── users.js          # User management routes
-│   └── admin.js          # Admin routes
+├── routes/                   # API route definitions
+│   ├── auth.js              # Authentication routes
+│   ├── users.js             # User management routes
+│   ├── admin.js             # Admin routes
+│   └── metrics.js           # Metric tracking routes
 │
-└── public/               # Static files
-    ├── admin-dashboard.html
-    ├── styles/
+├── utils/                    # Utility modules
+│   └── logger.js            # Winston logging configuration
+│
+└── public/                  # Static files and admin dashboard
+    ├── index.html           # Admin login page
+    ├── admin-dashboard.html # Admin dashboard
+    ├── css/
+    │   ├── index.css        # Login page styles
+    │   └── admin-dashboard.css # Dashboard styles
     └── scripts/
+        ├── index.js         # Login page logic
+        └── admin-dashboard.js # Dashboard logic
 ```
+
+## Logging
+
+The application uses Winston for comprehensive logging:
+
+- **Console Output**: Colorized, timestamped logs for development
+- **File Logging**: 
+  - `logs/error.log` - Error level logs only
+  - `logs/combined.log` - All log levels
+- **Log Format**: Structured JSON with timestamps and service tags
+- **Log Levels**: error, warn, info, debug
+
+Log files are automatically created in the `logs/` directory.
 
 ## Database
 
-The application uses PostgreSQL with two main tables:
+The application uses PostgreSQL with the following tables:
 
 ### Users Table
 - `id`: Serial primary key
@@ -95,9 +122,16 @@ The application uses PostgreSQL with two main tables:
 - `last_check_at`: Last session check timestamp (TIMESTAMP)
 - `refresh_count`: Number of token refreshes (INTEGER)
 
+### Admin Sessions Table
+- `id`: Serial primary key
+- `token`: Bearer token for admin authentication (TEXT)
+- `username`: Admin username (TEXT)
+- `created_at`: Session creation timestamp (TIMESTAMP)
+- `expires_at`: Token expiration timestamp (TIMESTAMP)
+
 ### Metric Types Table
 - `id`: Serial primary key
-- `name`: Name of the metric type (VARCHAR)
+- `name`: Name of the metric type (VARCHAR, UNIQUE)
 - `unit`: Unit for this type (VARCHAR)
 - `icon_name`: Icon name for this type (VARCHAR)
 - `is_default`: Indicates if it's a system-defined default type (BOOLEAN)
@@ -112,7 +146,7 @@ The application uses PostgreSQL with two main tables:
 - `date`: Date of the metric entry (DATE)
 - `is_apple_health`: Is from Apple Health (BOOLEAN)
 
-The database tables are automatically created when the application starts if they don't exist.
+**Default Metric Types**: The system automatically seeds 12 default body measurement metric types (Weight, Height, Body Fat, Waist, Bicep, Chest, Thigh, Shoulder, Glutes, Calf, Neck, Forearm).
 
 ## Database Setup
 
@@ -130,6 +164,8 @@ GRANT ALL PRIVILEGES ON DATABASE trackitdb TO dev;
 
 4. Update your `.env` file with the correct DATABASE_URL
 
+The database tables and default data are automatically created when the application starts.
+
 ## Running the Server
 
 Start the server:
@@ -137,663 +173,265 @@ Start the server:
 npm start
 ```
 
+For development with auto-restart:
+```bash
+npm run dev
+```
+
 The server will run on `http://localhost:3000` by default.
 
-## API Authentication
+## Admin Dashboard
 
-All endpoints require an API key provided either as:
+Access the admin dashboard at `http://localhost:3000/` with your admin credentials.
+
+**Features:**
+- User management (create, edit, delete users)
+- Real-time hardware monitoring (CPU temperature, fan speed, uptime)
+- User activity statistics with customizable timeframes
+- Active session management
+- Search and sort functionality
+- Responsive design for mobile and desktop
+
+## Authentication System
+
+The system uses multiple authentication mechanisms:
+
+### User Authentication
+- **JWT Tokens**: Short-lived access tokens (7 days) for API access
+- **Refresh Tokens**: Long-lived tokens (365 days) for token renewal
+- **Device-based Sessions**: Each device gets a unique session
+- **Session Limits**: Maximum 5 concurrent sessions per user
+
+### Admin Authentication
+- **Bearer Tokens**: Secure admin session tokens (1 hour expiration)
+- **Auto-cleanup**: Expired tokens are automatically removed
+- **Session Validation**: Token validation endpoint for dashboard
+
+### API Key Protection
+All endpoints require API key validation via:
 - Header: `x-api-key: your_api_key`
-- Query: `?apiKey=your_api_key`
-
-For authenticated user endpoints, include a JWT token:
-`Authorization: Bearer your_jwt_token`
-
-The JWT token contains:
-- `userId`: User ID
-- `username`: Username
-- `deviceId`: Device identifier
-- `iat`: Issued at timestamp
-- `exp`: Expiration timestamp
+- Admin endpoints require separate admin API key
 
 ## API Endpoints
 
-### Authentication
+### Authentication Routes (`/auth`)
 
 #### User Login
+- **POST** `/auth/login`
+- **Body**: `{ "username": "user", "password": "pass" }`
+- **Returns**: Access token, refresh token, user info
 
-- **URL**: `/auth/login`
-- **Method**: POST
-- **Body**:
-  ```json
-  {
-    "username": "johndoe",
-    "password": "securepassword"
-  }
-  ```
-- **Success Response**: 
-  ```json
-  {
-    "success": true,
-    "authenticated": true,
-    "message": "Authentication successful",
-    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
-    "refreshToken": "a1b2c3d4e5f6...",
-    "apiKey": "your_api_key_here",
-    "deviceId": "unique_device_id",
-    "user": {
-      "id": 1,
-      "username": "johndoe",
-      "email": "john@example.com"
-    }
-  }
-  ```
-- **Error Responses**:
-  - 400: Missing username or password
-  - 403: Maximum sessions (5) reached
-  - 500: Database error
+#### Token Refresh
+- **POST** `/auth/refresh`
+- **Headers**: `x-api-key`
+- **Body**: `{ "refreshToken": "token", "deviceId": "id" }`
+- **Returns**: New access and refresh tokens
 
-#### Check Session Status
-
-- **URL**: `/auth/check`
-- **Method**: GET
-- **Headers**: 
-  - `Authorization: Bearer your_jwt_token`
-  - `x-api-key: your_api_key`
-- **Success Response**: 
-  ```json
-  {
-    "success": true,
-    "isAuthenticated": true,
-    "message": "Session is valid",
-    "deviceId": "your_device_id",
-    "user": {
-      "id": 1,
-      "username": "johndoe",
-      "email": "john@example.com"
-    }
-  }
-  ```
-- **Error Responses**:
-  - 401: No token provided
-  - 500: Database error
+#### Session Check
+- **GET** `/auth/check`
+- **Headers**: `x-api-key`, `Authorization: Bearer token`
+- **Returns**: Session validity and user info
 
 #### Logout
-
-- **URL**: `/auth/logout`
-- **Method**: POST
-- **Headers**: 
-  - `x-api-key: your_api_key`
-- **Body**:
-  ```json
-  {
-    "deviceId": "your_device_id",
-    "userId": "user_id"
-  }
-  ```
-- **Success Response**: 
-  ```json
-  {
-    "success": true,
-    "message": "Logged out successfully"
-  }
-  ```
-- **Error Responses**:
-  - 400: Missing deviceId or userId
-  - 500: Database error
+- **POST** `/auth/logout`
+- **Headers**: `x-api-key`
+- **Body**: `{ "deviceId": "id", "userId": "id" }`
 
 #### Logout All Devices
-
-- **URL**: `/auth/logout-all`
-- **Method**: POST
-- **Headers**: 
-  - `x-api-key: your_api_key`
-- **Body**:
-  ```json
-  {
-    "userId": "user_id"
-  }
-  ```
-- **Success Response**: 
-  ```json
-  {
-    "success": true,
-    "message": "Logged out from all devices successfully"
-  }
-  ```
-- **Error Responses**:
-  - 400: Missing userId
-  - 500: Database error
+- **POST** `/auth/logout-all`
+- **Headers**: `x-api-key`
+- **Body**: `{ "userId": "id" }`
 
 #### List Active Sessions
+- **POST** `/auth/sessions`
+- **Headers**: `x-api-key`
+- **Body**: `{ "userId": "id" }`
+- **Returns**: Array of active sessions with device info
 
-- **URL**: `/auth/sessions`
-- **Method**: POST
-- **Headers**: 
-  - `x-api-key: your_api_key`
-- **Body**:
-  ```json
-  {
-    "userId": "user_id"
-  }
-  ```
-- **Success Response**: 
-  ```json
-  {
-    "success": true,
-    "sessions": [
-      {
-        "id": 1,
-        "device_id": "unique_device_id",
-        "created_at": "2024-03-20T10:00:00Z",
-        "last_refresh_at": "2024-03-20T15:00:00Z",
-        "refresh_count": 2
-      }
-    ]
-  }
-  ```
-- **Error Responses**:
-  - 400: Missing userId
-  - 500: Database error
+### User Management Routes (`/user`)
 
-#### Refresh Token
-
-- **URL**: `/auth/refresh`
-- **Method**: POST
-- **Headers**: 
-  - `x-api-key: your_api_key`
-- **Body**:
-  ```json
-  {
-    "refreshToken": "your_refresh_token",
-    "deviceId": "your_device_id"
-  }
-  ```
-- **Success Response**: 
-  ```json
-  {
-    "success": true,
-    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
-    "refreshToken": "new_refresh_token...",
-    "deviceId": "your_device_id"
-  }
-  ```
-- **Error Responses**:
-  - 400: Missing refreshToken or deviceId
-  - 401: Invalid or expired refresh token
-  - 500: Database error
-
-### User Management
-
-#### Register a New User
-
-- **URL**: `/user/register`
-- **Method**: POST
-- **Body**:
-  ```json
-  {
-    "username": "johndoe",
-    "email": "john@example.com",
-    "password": "securepassword"
-  }
-  ```
-- **Success Response**: 
-  ```json
-  {
-    "success": true,
-    "authenticated": true,
-    "message": "Registration successful",
-    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
-    "refreshToken": "a1b2c3d4e5f6...",
-    "apiKey": "your_api_key_here",
-    "deviceId": "unique_device_id",
-    "user": {
-      "id": 1,
-      "username": "johndoe",
-      "email": "john@example.com"
-    }
-  }
-  ```
-- **Error Responses**:
-  - 400: Invalid email format
-  - 409: Username already exists
-  - 500: Database error
+#### Register New User
+- **POST** `/user/register`
+- **Body**: `{ "username": "user", "email": "email", "password": "pass" }`
+- **Returns**: User info and authentication tokens
 
 #### Change Password
-
-- **URL**: `/user/change/password`
-- **Method**: POST
-- **Body**:
-  ```json
-  {
-    "username": "johndoe",
-    "oldPassword": "oldpassword",
-    "newPassword": "newpassword"
-  }
-  ```
-- **Success Response**: 
-  ```json
-  {
-    "success": true,
-    "message": "Password updated successfully"
-  }
-  ```
+- **POST** `/user/change/password`
+- **Headers**: `x-api-key`
+- **Body**: `{ "username": "user", "oldPassword": "old", "newPassword": "new" }`
 
 #### Change Username
-
-- **URL**: `/user/change/username`
-- **Method**: POST
-- **Body**:
-  ```json
-  {
-    "oldUsername": "johndoe",
-    "newUsername": "johndoe2",
-    "password": "securepassword"
-  }
-  ```
-- **Success Response**: 
-  ```json
-  {
-    "success": true,
-    "message": "Username updated successfully"
-  }
-  ```
+- **POST** `/user/change/username`
+- **Headers**: `x-api-key`
+- **Body**: `{ "oldUsername": "old", "newUsername": "new", "password": "pass" }`
 
 #### Change Email
-
-- **URL**: `/user/change/email`
-- **Method**: POST
-- **Body**:
-  ```json
-  {
-    "username": "johndoe",
-    "newEmail": "newemail@example.com",
-    "password": "securepassword"
-  }
-  ```
-- **Success Response**: 
-  ```json
-  {
-    "success": true,
-    "message": "Email updated successfully"
-  }
-  ```
+- **POST** `/user/change/email`
+- **Headers**: `x-api-key`
+- **Body**: `{ "username": "user", "newEmail": "email", "password": "pass" }`
 
 #### Delete Account
+- **POST** `/user/delete`
+- **Headers**: `x-api-key`
+- **Body**: `{ "username": "user", "password": "pass" }`
 
-- **URL**: `/user/delete`
-- **Method**: POST
-- **Body**:
-  ```json
-  {
-    "username": "johndoe",
-    "password": "securepassword"
-  }
-  ```
-- **Success Response**: 
-  ```json
-  {
-    "success": true,
-    "message": "Account deleted successfully"
-  }
-  ```
+### Metric Management Routes (`/api/metrics`)
 
-### Admin Operations
+All metric endpoints require: `x-api-key` header and `Authorization: Bearer token`
 
-#### Admin Login
+#### Create Metric Entry
+- **POST** `/api/metrics`
+- **Body**: `{ "metric_type_id": 1, "value": 75, "date": "2024-03-25", "is_apple_health": false }`
+- **Returns**: Entry ID and success message
 
-- **URL**: `/admin/login`
-- **Method**: POST
-- **Body**:
-  ```json
-  {
-    "username": "admin",
-    "password": "admin"
-  }
-  ```
-- **Success Response**: 
-  ```json
-  {
-    "success": true,
-    "adminApiKey": "your_admin_api_key",
-    "apiKey": "your_api_key",
-    "username": "admin",
-    "message": "Admin login successful"
-  }
-  ```
-
-#### Admin User Lookup
-
-- **URL**: `/admin/user`
-- **Method**: POST
-- **Headers**:
-  - `x-admin-api-key: your_admin_api_key`
-- **Body**:
-  ```json
-  {
-    "username": "johndoe"
-  }
-  ```
-- **Success Response**: 
-  ```json
-  {
-    "id": 1,
-    "username": "johndoe",
-    "email": "john@example.com",
-    "password": "[hashed password]"
-  }
-  ```
-
-#### Get All User Data
-
-- **URL**: `/admin/getAllUserData`
-- **Method**: GET
-- **Headers**:
-  - `x-admin-api-key: your_admin_api_key`
-- **Success Response**: 
-  ```json
-  {
-    "success": true,
-    "users": [
-      {
-        "id": 1,
-        "username": "johndoe",
-        "email": "john@example.com"
-      }
-    ]
-  }
-  ```
-
-#### Get All Emails
-
-- **URL**: `/admin/emails`
-- **Method**: GET
-- **Headers**:
-  - `x-admin-api-key: your_admin_api_key`
-- **Success Response**: 
-  ```json
-  {
-    "success": true,
-    "emails": ["user1@example.com", "user2@example.com"]
-  }
-  ```
-
-#### Update User
-
-- **URL**: `/admin/updateUser`
-- **Method**: POST
-- **Headers**:
-  - `x-admin-api-key: your_admin_api_key`
-- **Body**:
-  ```json
-  {
-    "id": 1,
-    "username": "newusername",
-    "email": "newemail@example.com",
-    "password": "newpassword"
-  }
-  ```
-- **Success Response**: 
-  ```json
-  {
-    "success": true,
-    "message": "User updated successfully",
-    "changes": 1
-  }
-  ```
-
-#### Delete User
-
-- **URL**: `/admin/deleteUser`
-- **Method**: POST
-- **Headers**:
-  - `x-admin-api-key: your_admin_api_key`
-- **Body**:
-  ```json
-  {
-    "id": 1
-  }
-  ```
-- **Success Response**: 
-  ```json
-  {
-    "success": true,
-    "message": "User deleted successfully",
-    "changes": 1
-  }
-  ```
-
-#### Create User
-
-- **URL**: `/admin/createUser`
-- **Method**: POST
-- **Headers**:
-  - `x-admin-api-key: your_admin_api_key`
-- **Body**:
-  ```json
-  {
-    "username": "newuser",
-    "email": "newuser@example.com",
-    "password": "password123"
-  }
-  ```
-- **Success Response**: 
-  ```json
-  {
-    "success": true,
-    "message": "User created successfully",
-    "userId": 1
-  }
-  ```
-
-#### Get Registrations Stats
-
-- **URL**: `/admin/registrations`
-- **Method**: GET
-- **Headers**:
-  - `x-admin-api-key: your_admin_api_key`
-- **Query Parameters**:
-  - `range`: One of: "24h", "week", "month", "year"
-- **Success Response**: 
-  ```json
-  {
-    "success": true,
-    "count": 10,
-    "range": "week"
-  }
-  ```
-
-#### Get Active Users Stats
-
-- **URL**: `/admin/active-users`
-- **Method**: GET
-- **Headers**:
-  - `x-admin-api-key: your_admin_api_key`
-- **Query Parameters**:
-  - `range`: One of: "24h", "week", "month", "year"
-- **Success Response**: 
-  ```json
-  {
-    "success": true,
-    "count": 5,
-    "range": "24h"
-  }
-  ```
-
-#### Get Hardware Information
-
-- **URL**: `/admin/hardwareinfo`
-- **Method**: GET
-- **Headers**:
-  - `x-admin-api-key: your_admin_api_key`
-- **Success Response**: 
-  ```json
-  {
-    "success": true,
-    "hardware": {
-      "temperature": {
-        "value": 55.55,
-        "color": "green"
-      },
-      "fanSpeed": {
-        "value": 4123,
-        "color": "red"
-      },
-      "uptime": "1 week, 1 day, 3 hours, 17 minutes"
-    }
-  }
-  ```
-- **Color Coding**:
-  - Temperature:
-    - Red: >70°C
-    - Green: 40-70°C
-    - Blue: <40°C
-  - Fan Speed:
-    - Red: >3000 RPM
-    - Green: 1500-3000 RPM
-    - Blue: <1500 RPM
-
-### Metric Management
-
-#### Log New Metric Entry
-
-- **URL**: `/api/metrics`
-- **Method**: POST
-- **Headers**:
-  - `x-api-key: your_api_key`
-  - `Authorization: Bearer your_jwt_token`
-- **Body**:
-  ```json
-  {
-    "metric_type_id": 1,
-    "value": 75,
-    "date": "2024-03-25",
-    "is_apple_health": false
-  }
-  ```
-- **Success Response**:
-  ```json
-  {
-    "success": true,
-    "message": "Metric entry created successfully",
-    "entryId": 123
-  }
-  ```
-- **Error Responses**:
-  - 400: Missing required fields
-  - 401: Authentication token or API key missing/invalid
-  - 403: Invalid API key
-  - 404: Metric type not found
-  - 500: Database or server error
-
-#### Edit Metric Entry
-
-- **URL**: `/api/metrics/:entryId`
-- **Method**: PUT
-- **Headers**:
-  - `x-api-key: your_api_key`
-  - `Authorization: Bearer your_jwt_token`
-- **Body**:
-  ```json
-  {
-    "value": 76,
-    "date": "2024-03-26"
-  }
-  ```
-- **Success Response**:
-  ```json
-  {
-    "success": true,
-    "message": "Metric entry updated successfully"
-  }
-  ```
-- **Error Responses**:
-  - 400: No update fields provided
-  - 401: Authentication token or API key missing/invalid
-  - 403: Invalid API key
-  - 404: Metric entry not found or does not belong to the user
-  - 500: Database or server error
+#### Update Metric Entry
+- **PUT** `/api/metrics/:entryId`
+- **Body**: `{ "value": 76, "date": "2024-03-26" }` (partial updates allowed)
 
 #### Delete Metric Entry
+- **DELETE** `/api/metrics/:entryId`
 
-- **URL**: `/api/metrics/:entryId`
-- **Method**: DELETE
-- **Headers**:
-  - `x-api-key: your_api_key`
-  - `Authorization: Bearer your_jwt_token`
-- **Success Response**:
-  ```json
-  {
-    "success": true,
-    "message": "Metric entry deleted successfully"
-  }
-  ```
-- **Error Responses**:
-  - 401: Authentication token or API key missing/invalid
-  - 403: Invalid API key
-  - 404: Metric entry not found or does not belong to the user
-  - 500: Database or server error
+### Admin Routes (`/admin`)
 
-## Session Management
+#### Admin Login
+- **POST** `/admin/login`
+- **Body**: `{ "username": "admin", "password": "admin" }`
+- **Returns**: Bearer token, admin API key, regular API key
 
-The system uses a combination of access tokens and refresh tokens for session management:
+#### Token Validation
+- **POST** `/admin/validate-token`
+- **Headers**: `Authorization: Bearer admin_token`
 
-1. **Access Token**:
-   - Short-lived (7 days)
-   - Used for API authentication
-   - Contains user and device information
-   - Stored in the database with expiration time
+#### Admin Logout
+- **POST** `/admin/logout`
+- **Headers**: `Authorization: Bearer admin_token`
 
-2. **Refresh Token**:
-   - Long-lived (365 days)
-   - Used to obtain new access tokens
-   - Stored in the database with expiration time
+All other admin endpoints require: `Authorization: Bearer admin_token`
 
-3. **Device Management**:
-   - Each login creates a unique device ID based on user agent and IP
-   - Maximum of 5 concurrent sessions per user
-   - Sessions are tracked per device
-   - Users can view and manage their active sessions
+#### User Management
+- **GET** `/admin/getAllUserData` - Get all users
+- **POST** `/admin/user` - Get specific user info
+- **POST** `/admin/updateUser` - Update user data
+- **POST** `/admin/deleteUser` - Delete user
+- **POST** `/admin/createUser` - Create new user
+- **GET** `/admin/emails` - Get all user emails
 
-4. **Session Storage**:
-   - Sessions are stored in the database with:
-     - User ID
-     - Device ID
-     - Access token
-     - Refresh token
-     - Access token expiration
-     - Refresh token expiration
-     - Creation timestamp
-     - Last refresh timestamp
-     - Refresh count
+#### Statistics
+- **GET** `/admin/registrations?range=24h|week|month|year` - Registration stats
+- **GET** `/admin/active-users?range=24h|week|month|year` - Active user stats
 
-### Client Implementation
+#### Hardware Monitoring
+- **GET** `/admin/hardwareinfo` - Get server hardware stats
+- **Returns**: CPU temperature, fan speed, uptime with color coding
 
-For the best user experience, implement the following in your client application:
+#### Legacy Endpoint (Deprecated)
+- **POST** `/admin/check` - Legacy admin credentials check (use login instead)
 
-1. Store securely:
-   - Access token
-   - Refresh token
-   - Device ID
-   - API key
+## Error Handling
 
-2. Use the access token for all API requests
+The API returns consistent error responses:
 
-3. When you get a 401 error (expired token):
-   - Use the refresh token and device ID to get new tokens
-   - Retry the original request with the new access token
+```json
+{
+  "success": false,
+  "error": "Error message description"
+}
+```
 
-4. If the refresh token request fails:
-   - Redirect to login screen
+**Common HTTP Status Codes:**
+- `200`: Success
+- `201`: Created
+- `400`: Bad Request (missing/invalid data)
+- `401`: Unauthorized (invalid/missing token/API key)
+- `403`: Forbidden (insufficient permissions)
+- `404`: Not Found
+- `409`: Conflict (duplicate data)
+- `500`: Internal Server Error
 
-5. On logout:
-   - Call the logout endpoint with the device ID
-   - Clear stored tokens
-   - Redirect to login screen
+## Hardware Monitoring
 
-6. Session Management:
-   - Track the current device ID
-   - Use it to identify the current session in the sessions list
-   - Implement session management UI to view and control active sessions
+The admin dashboard includes real-time hardware monitoring requiring `lm-sensors`:
 
-## Replit
-- pull updates `git pull origin main`
+```bash
+# Install on Ubuntu/Debian
+sudo apt-get install lm-sensors
+
+# Configure sensors
+sudo sensors-detect
+```
+
+**Monitored Metrics:**
+- **CPU Temperature**: Color-coded (Red: >70°C, Green: 40-70°C, Blue: <40°C)
+- **Fan Speed**: Color-coded (Red: >3000 RPM, Green: 1500-3000 RPM, Blue: <1500 RPM)
+- **System Uptime**: Formatted display (days, hours, minutes)
+
+## Security Features
+
+1. **Password Hashing**: bcrypt with configurable salt rounds
+2. **JWT Security**: Signed tokens with expiration
+3. **API Key Validation**: Required for all endpoints
+4. **Session Management**: Device-based tracking with limits
+5. **Admin Token Expiration**: 1-hour admin sessions with auto-cleanup
+6. **Input Validation**: Email format, required fields
+7. **SQL Injection Protection**: Parameterized queries
+8. **CORS Protection**: Configurable origin restrictions
+
+## Development
+
+### Available Scripts
+- `npm start` - Start production server
+- `npm run dev` - Start development server with nodemon
+
+### Environment Variables
+The application requires all environment variables to be set in `.env`. Missing variables will prevent startup.
+
+### Database Migrations
+Database schema updates are handled automatically on application startup. New tables and default data are created as needed.
+
+### Logging Configuration
+Customize logging in `utils/logger.js`:
+- Adjust log levels
+- Modify output formats
+- Change file destinations
+- Configure rotation policies
+
+## Deployment Considerations
+
+1. **Environment Variables**: Secure storage of secrets
+2. **Database**: PostgreSQL with proper connection pooling
+3. **Logging**: Persistent log storage and rotation
+4. **Hardware Monitoring**: Ensure lm-sensors is installed and configured
+5. **HTTPS**: Use reverse proxy (nginx/Apache) for SSL termination
+6. **Process Management**: Use PM2 or similar for process management
+
+## Client Implementation Guide
+
+### Token Management
+1. Store tokens securely (keychain/secure storage)
+2. Include API key in all requests
+3. Handle token refresh automatically on 401 errors
+4. Implement proper logout flow
+
+### Session Management
+1. Track current device ID
+2. Implement session list UI
+3. Allow users to manage active sessions
+4. Handle session limits gracefully
+
+### Error Handling
+1. Parse error responses consistently
+2. Show user-friendly error messages
+3. Handle network connectivity issues
+4. Implement retry logic for failed requests
+
+## Contributing
+
+1. Follow existing code style and structure
+2. Add logging for new features
+3. Update API documentation for new endpoints
+4. Test database operations thoroughly
+5. Ensure proper error handling
+
+## License
+
+ISC License - see package.json for details.
