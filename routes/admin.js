@@ -1,12 +1,54 @@
 const express = require('express');
 const router = express.Router();
-const { validateAdminApiKey, validateAdminToken } = require('../auth');
+const { validateAdminToken } = require('../auth');
 const adminController = require('../controllers/adminController');
 const crypto = require('crypto');
 const { db } = require('../database');
 const logger = require('../utils/logger');
 
-// Admin login - generates bearer token
+/**
+ * @swagger
+ * /admin/login:
+ *   post:
+ *     summary: Admin login
+ *     tags: [Admin]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - username
+ *               - password
+ *             properties:
+ *               username:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 bearerToken:
+ *                   type: string
+ *                 adminApiKey:
+ *                   type: string
+ *                 apiKey:
+ *                   type: string
+ *                 username:
+ *                   type: string
+ *                 expiresAt:
+ *                   type: string
+ *       401:
+ *         description: Invalid credentials
+ */
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
   const clientIP = req.ip;
@@ -59,7 +101,20 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Token validation endpoint
+/**
+ * @swagger
+ * /admin/validate-token:
+ *   post:
+ *     summary: Validate admin token
+ *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Token is valid
+ *       401:
+ *         description: Invalid token
+ */
 router.post('/validate-token', validateAdminToken, (req, res) => {
   logger.info(`Admin token validation successful for ${req.adminUser.username} from ${req.ip}`);
   res.json({
@@ -69,7 +124,20 @@ router.post('/validate-token', validateAdminToken, (req, res) => {
   });
 });
 
-// Logout endpoint
+/**
+ * @swagger
+ * /admin/logout:
+ *   post:
+ *     summary: Admin logout
+ *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Logout successful
+ *       401:
+ *         description: Invalid token
+ */
 router.post('/logout', validateAdminToken, async (req, res) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader.split(' ')[1];
@@ -91,53 +159,275 @@ router.post('/logout', validateAdminToken, async (req, res) => {
   }
 });
 
-// All other admin routes now use bearer token authentication
+/**
+ * @swagger
+ * /admin/user:
+ *   post:
+ *     summary: Get user information
+ *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - username
+ *             properties:
+ *               username:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: User information retrieved successfully
+ *       401:
+ *         description: Invalid token
+ */
 router.post('/user', validateAdminToken, (req, res) => {
   logger.info(`Admin user info request from ${req.adminUser.username} at ${req.ip}`);
   adminController.getUserInfo(req, res);
 });
 
+/**
+ * @swagger
+ * /admin/getAllUserData:
+ *   get:
+ *     summary: Get all user data
+ *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: All user data retrieved successfully
+ *       401:
+ *         description: Invalid token
+ */
 router.get('/getAllUserData', validateAdminToken, (req, res) => {
   logger.info(`Admin getAllUserData request from ${req.adminUser.username} at ${req.ip}`);
   adminController.getAllUserData(req, res);
 });
 
+/**
+ * @swagger
+ * /admin/emails:
+ *   get:
+ *     summary: Get all user emails
+ *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: All emails retrieved successfully
+ *       401:
+ *         description: Invalid token
+ */
 router.get('/emails', validateAdminToken, (req, res) => {
   logger.info(`Admin emails request from ${req.adminUser.username} at ${req.ip}`);
   adminController.getAllEmails(req, res);
 });
 
+/**
+ * @swagger
+ * /admin/updateUser:
+ *   post:
+ *     summary: Update user information
+ *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - id
+ *             properties:
+ *               id:
+ *                 type: string
+ *               username:
+ *                 type: string
+ *                 nullable: true
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 nullable: true
+ *               password:
+ *                 type: string
+ *                 nullable: true
+ *     responses:
+ *       200:
+ *         description: User updated successfully
+ *       401:
+ *         description: Invalid token
+ */
 router.post('/updateUser', validateAdminToken, (req, res) => {
   logger.info(`Admin updateUser request from ${req.adminUser.username} at ${req.ip} for user ID: ${req.body.id}`);
   adminController.updateUser(req, res);
 });
 
+/**
+ * @swagger
+ * /admin/deleteUser:
+ *   post:
+ *     summary: Delete a user
+ *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - id
+ *             properties:
+ *               id:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: User deleted successfully
+ *       401:
+ *         description: Invalid token
+ */
 router.post('/deleteUser', validateAdminToken, (req, res) => {
   logger.info(`Admin deleteUser request from ${req.adminUser.username} at ${req.ip} for user ID: ${req.body.id}`);
   adminController.deleteUser(req, res);
 });
 
+/**
+ * @swagger
+ * /admin/createUser:
+ *   post:
+ *     summary: Create a new user
+ *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - username
+ *               - email
+ *               - password
+ *             properties:
+ *               username:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: User created successfully
+ *       401:
+ *         description: Invalid token
+ */
 router.post('/createUser', validateAdminToken, (req, res) => {
   logger.info(`Admin createUser request from ${req.adminUser.username} at ${req.ip} for username: ${req.body.username}`);
   adminController.createUser(req, res);
 });
 
+/**
+ * @swagger
+ * /admin/registrations:
+ *   get:
+ *     summary: Get user registrations
+ *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: range
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Registrations retrieved successfully
+ *       401:
+ *         description: Invalid token
+ */
 router.get('/registrations', validateAdminToken, (req, res) => {
   logger.info(`Admin registrations request from ${req.adminUser.username} at ${req.ip} with range: ${req.query.range}`);
   adminController.getRegistrations(req, res);
 });
 
+/**
+ * @swagger
+ * /admin/active-users:
+ *   get:
+ *     summary: Get active users
+ *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: range
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Active users retrieved successfully
+ *       401:
+ *         description: Invalid token
+ */
 router.get('/active-users', validateAdminToken, (req, res) => {
   logger.info(`Admin active-users request from ${req.adminUser.username} at ${req.ip} with range: ${req.query.range}`);
   adminController.getActiveUsers(req, res);
 });
 
+/**
+ * @swagger
+ * /admin/hardwareinfo:
+ *   get:
+ *     summary: Get hardware information
+ *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Hardware information retrieved successfully
+ *       401:
+ *         description: Invalid token
+ */
 router.get('/hardwareinfo', validateAdminToken, (req, res) => {
   logger.info(`Admin hardwareinfo request from ${req.adminUser.username} at ${req.ip}`);
   adminController.getHardwareInfo(req, res);
 });
 
-// Legacy check endpoint (keep for backward compatibility)
+/**
+ * @swagger
+ * /admin/check:
+ *   post:
+ *     summary: Legacy admin check (deprecated)
+ *     tags: [Admin]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - username
+ *               - password
+ *             properties:
+ *               username:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Check successful
+ *       401:
+ *         description: Invalid credentials
+ *     deprecated: true
+ */
 router.post('/check', (req, res) => {
   const { username, password } = req.body;
   
