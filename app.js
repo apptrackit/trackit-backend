@@ -31,6 +31,22 @@ app.use('/api/metrics', metricsRoutes);
 // Start server only after database is initialized
 initializeDatabase()
   .then(() => {
+    const { db } = require('./database');
+    
+    // Cleanup expired admin tokens every hour
+    setInterval(async () => {
+      try {
+        const result = await db.query('DELETE FROM admin_sessions WHERE expires_at <= NOW()');
+        if (result.rowCount > 0) {
+          logger.info(`Cleaned up ${result.rowCount} expired admin tokens`);
+        }
+      } catch (error) {
+        logger.error('Error cleaning up expired admin tokens:', error);
+      }
+    }, 60 * 60 * 1000); // Run every hour
+
+    logger.info('Admin token cleanup job started - running every hour');
+
     app.listen(process.env.PORT, process.env.HOST, () => {
       logger.info(`Server running on http://${process.env.HOST}:${process.env.PORT}`);
     });
