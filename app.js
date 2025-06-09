@@ -3,9 +3,26 @@ const path = require('path');
 const app = express();
 require('dotenv').config();
 const logger = require('./utils/logger');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpecs = require('./utils/swagger');
 
 // Middleware
 app.use(express.json());
+
+// Conditionally enable Swagger UI
+const isDevelopment = process.env.NODE_ENV !== 'prod' && process.env.NODE_ENV !== 'production';
+
+if (isDevelopment) {
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
+    swaggerOptions: {
+      persistAuthorization: true,
+      docExpansion: 'none',
+      filter: true,
+      showCommonExtensions: true,
+      tryItOutEnabled: true
+    }
+  }));
+}
 
 // Serve static files from the public directory
 app.use(express.static(path.join(__dirname, 'public')));
@@ -49,6 +66,9 @@ initializeDatabase()
 
     app.listen(process.env.PORT, process.env.HOST, () => {
       logger.info(`Server running on http://${process.env.HOST}:${process.env.PORT}`);
+      if (isDevelopment) {
+        logger.info(`Swagger UI available at http://${process.env.HOST}:${process.env.PORT}/api-docs`);
+      }
     });
   })
   .catch((error) => {
