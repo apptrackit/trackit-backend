@@ -6,7 +6,7 @@ const options = {
     info: {
       title: 'TrackIt API Documentation',
       version: '1.0.0',
-      description: 'API documentation for the TrackIt application',
+      description: `API documentation for the TrackIt application (${process.env.NODE_ENV})`,
     },
         servers: [
       {
