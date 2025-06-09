@@ -45,6 +45,8 @@ initializeDatabase()
       }
     }, 60 * 60 * 1000); // Run every hour
 
+    logger.info('Admin token cleanup job started - running every hour');
+
     app.listen(process.env.PORT, process.env.HOST, () => {
       logger.info(`Server running on http://${process.env.HOST}:${process.env.PORT}`);
     });
