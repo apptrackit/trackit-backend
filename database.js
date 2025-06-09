@@ -1,14 +1,15 @@
 const { Pool } = require('pg');
+const logger = require('./utils/logger');
 require('dotenv').config();
 
 const db = new Pool({
-  connectionString: process.env.DATABASE_URL, // e.g. postgres://user:password@host:port/database
+  connectionString: process.env.DATABASE_URL
 });
 
-(async () => {
+const initializeDatabase = async () => {
   try {
     const client = await db.connect();
-    console.log('Connected to the PostgreSQL database');
+    logger.info('Connected to the PostgreSQL database');
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
@@ -19,7 +20,7 @@ const db = new Pool({
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    console.log('Users table ready');
+    logger.info('Users table ready');
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS sessions (
@@ -37,7 +38,7 @@ const db = new Pool({
         UNIQUE(user_id, device_id)
       );
     `);
-    console.log('Sessions table ready');
+    logger.info('Sessions table ready');
 
 
     // Create metric_types table
@@ -52,7 +53,7 @@ const db = new Pool({
         category VARCHAR(100)
       );
     `);
-    console.log('Metric types table ready');
+    logger.info('Metric types table ready');
 
     // Define non-calculated default metric types based on Swift enum
     const nonCalculatedDefaultMetricTypes = [
@@ -83,12 +84,12 @@ const db = new Pool({
            VALUES ($1, $2, $3, $4, $5, $6)`,
           [type.name, type.unit, type.icon_name, true, null, type.category]
         );
-        console.log(`Seeded default metric type: ${type.name}`);
+        logger.info(`Seeded default metric type: ${type.name}`);
       } else {
-        console.log(`Default metric type already exists: ${type.name}`);
+        logger.info(`Default metric type already exists: ${type.name}`);
       }
     }
-    console.log('Default metric types seeding process completed.');
+    logger.info('Default metric types seeding process completed.');
 
     // Create metric_entries table
     await client.query(`
@@ -101,18 +102,23 @@ const db = new Pool({
         is_apple_health BOOLEAN DEFAULT FALSE
       );
     `);
-    console.log('Metric entries table ready');
+    logger.info('Metric entries table ready');
 
     client.release();
+    return true;
   } catch (err) {
-    console.error('Database error:', err.message);
+    logger.error('Database error:', err.message);
+    throw err;
   }
-})();
+};
+
+// Initialize database immediately
+const dbInitPromise = initializeDatabase();
 
 process.on('SIGINT', async () => {
   await db.end();
-  console.log('Database connection closed');
+  logger.info('Database connection closed');
   process.exit(0);
 });
 
-module.exports = db;
+module.exports = { db, initializeDatabase: () => dbInitPromise };
