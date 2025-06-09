@@ -8,10 +8,14 @@ const options = {
       version: '1.0.0',
       description: 'API documentation for the TrackIt application',
     },
-    servers: [
+        servers: [
       {
-        url: `http://${process.env.HOST}:${process.env.PORT}`,
+        url: 'http://dev.ballabotond.com:4000',
         description: 'Development server',
+      },
+      {
+        url: `http://localhost:${process.env.PORT}`,
+        description: 'Local development server',
       },
     ],
     components: {
