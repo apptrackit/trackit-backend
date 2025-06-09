@@ -3,9 +3,22 @@ const path = require('path');
 const app = express();
 require('dotenv').config();
 const logger = require('./utils/logger');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpecs = require('./utils/swagger');
 
 // Middleware
 app.use(express.json());
+
+// Swagger UI setup with authentication support
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
+  swaggerOptions: {
+    persistAuthorization: true,
+    docExpansion: 'none',
+    filter: true,
+    showCommonExtensions: true,
+    tryItOutEnabled: true
+  }
+}));
 
 // Serve static files from the public directory
 app.use(express.static(path.join(__dirname, 'public')));
