@@ -1,4 +1,4 @@
-const { db } = require('../database');
+const metricService = require('../services/metricService');
 const logger = require('../utils/logger');
 
 // Controller function to log a new metric entry
@@ -14,24 +14,15 @@ exports.createMetricEntry = async (req, res) => {
   }
 
   try {
-    // Check if the metric_type_id exists
-    const typeCheck = await db.query('SELECT id FROM metric_types WHERE id = $1', [metric_type_id]);
-    if (typeCheck.rows.length === 0) {
-      logger.warn(`Metric entry creation failed - Metric type not found: ${metric_type_id}`);
-      return res.status(404).json({ message: 'Metric type not found.' });
+    const result = await metricService.createMetricEntry(user_id, metric_type_id, value, date, is_apple_health);
+    logger.info(`Metric entry created successfully - ID: ${result.entryId}, User: ${user_id}`);
+    res.status(201).json({ success: true, message: 'Metric entry created successfully', entryId: result.entryId });
+  } catch (error) {
+    logger.error('Error creating metric entry:', error);
+    if (error.message === 'Metric type not found') {
+      return res.status(404).json({ message: error.message });
     }
-
-    const result = await db.query(
-      `INSERT INTO metric_entries (user_id, metric_type_id, value, date, is_apple_health)
-       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-      [user_id, metric_type_id, value, date, is_apple_health]
-    );
-
-    logger.info(`Metric entry created successfully - ID: ${result.rows[0].id}, User: ${user_id}`);
-    res.status(201).json({ success: true, message: 'Metric entry created successfully', entryId: result.rows[0].id });
-  } catch (err) {
-    logger.error('Error creating metric entry:', err);
-    res.status(500).json({ message: 'Error creating metric entry', error: err.message });
+    res.status(500).json({ message: 'Error creating metric entry', error: error.message });
   }
 };
 
@@ -48,43 +39,16 @@ exports.updateMetricEntry = async (req, res) => {
      return res.status(400).json({ message: 'No update fields provided.' });
   }
 
-  // Build the update query dynamically based on provided fields
-  const updateFields = [];
-  const queryParams = [user_id, entryId];
-  let paramIndex = 3; // Start index for value, date, is_apple_health
-
-  if (value !== undefined) {
-    updateFields.push(`value = $${paramIndex++}`);
-    queryParams.push(value);
-  }
-  if (date !== undefined) {
-    updateFields.push(`date = $${paramIndex++}`);
-    queryParams.push(date);
-  }
-  if (is_apple_health !== undefined) {
-     updateFields.push(`is_apple_health = $${paramIndex++}`);
-     queryParams.push(is_apple_health);
-  }
-
-  if (updateFields.length === 0) {
-      return res.status(400).json({ message: 'No valid fields to update.' });
-  }
-
   try {
-    const query = `UPDATE metric_entries SET ${updateFields.join(', ')} WHERE id = $2 AND user_id = $1 RETURNING id`;
-
-    const result = await db.query(query, queryParams);
-
-    if (result.rowCount === 0) {
-      logger.warn(`Metric entry update failed - Entry not found or unauthorized: ${entryId}, User: ${user_id}`);
-      return res.status(404).json({ message: 'Metric entry not found or does not belong to the user.' });
-    }
-
+    await metricService.updateMetricEntry(user_id, entryId, { value, date, is_apple_health });
     logger.info(`Metric entry updated successfully - ID: ${entryId}, User: ${user_id}`);
     res.status(200).json({ success: true, message: 'Metric entry updated successfully' });
-  } catch (err) {
-    logger.error('Error updating metric entry:', err);
-    res.status(500).json({ message: 'Error updating metric entry', error: err.message });
+  } catch (error) {
+    logger.error('Error updating metric entry:', error);
+    if (error.message === 'Metric entry not found or does not belong to the user') {
+      return res.status(404).json({ message: error.message });
+    }
+    res.status(500).json({ message: 'Error updating metric entry', error: error.message });
   }
 };
 
@@ -96,20 +60,14 @@ exports.deleteMetricEntry = async (req, res) => {
   logger.info(`Deleting metric entry - ID: ${entryId}, User: ${user_id}`);
 
   try {
-    const result = await db.query(
-      'DELETE FROM metric_entries WHERE id = $1 AND user_id = $2 RETURNING id',
-      [entryId, user_id]
-    );
-
-    if (result.rowCount === 0) {
-      logger.warn(`Metric entry deletion failed - Entry not found or unauthorized: ${entryId}, User: ${user_id}`);
-      return res.status(404).json({ message: 'Metric entry not found or does not belong to the user.' });
-    }
-
+    await metricService.deleteMetricEntry(user_id, entryId);
     logger.info(`Metric entry deleted successfully - ID: ${entryId}, User: ${user_id}`);
     res.status(200).json({ success: true, message: 'Metric entry deleted successfully' });
-  } catch (err) {
-    logger.error('Error deleting metric entry:', err);
-    res.status(500).json({ message: 'Error deleting metric entry', error: err.message });
+  } catch (error) {
+    logger.error('Error deleting metric entry:', error);
+    if (error.message === 'Metric entry not found or does not belong to the user') {
+      return res.status(404).json({ message: error.message });
+    }
+    res.status(500).json({ message: 'Error deleting metric entry', error: error.message });
   }
 };
