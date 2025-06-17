@@ -2,18 +2,6 @@ const jwt = require('jsonwebtoken');
 const { db } = require('./database');
 const logger = require('./utils/logger');
 
-// Validate API key for regular endpoints
-const validateApiKey = (req, res, next) => {
-  const apiKey = req.headers['x-api-key'];
-  
-  if (!apiKey || apiKey !== process.env.API_KEY) {
-    logger.warn(`Invalid API key attempt from ${req.ip}`);
-    return res.status(401).json({ success: false, error: 'Invalid API key' });
-  }
-  
-  next();
-};
-
 // Validate token for authenticated endpoints
 const validateToken = async (req, res, next) => {
   const token = req.headers['authorization']?.split(' ')[1];
@@ -32,19 +20,6 @@ const validateToken = async (req, res, next) => {
     logger.warn(`Invalid token attempt from ${req.ip}: ${error.message}`);
     return res.status(401).json({ success: false, error: 'Invalid or expired token' });
   }
-};
-
-// Legacy admin API key validation (kept for backward compatibility)
-const validateAdminApiKey = (req, res, next) => {
-  const adminApiKey = req.headers['x-admin-api-key'];
-  
-  if (!adminApiKey || adminApiKey !== process.env.ADMIN_API_KEY) {
-    logger.warn(`Invalid admin API key attempt from ${req.ip}`);
-    return res.status(401).json({ success: false, error: 'Invalid admin API key' });
-  }
-  
-  logger.info(`Admin API key validated from ${req.ip}`);
-  next();
 };
 
 // Validate admin bearer token
@@ -88,9 +63,7 @@ const generateDeviceId = (req) => {
 };
 
 module.exports = {
-  validateApiKey,
   validateToken,
-  validateAdminApiKey,
   validateAdminToken,
   generateDeviceId
 };

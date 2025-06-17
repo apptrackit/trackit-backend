@@ -37,7 +37,6 @@ exports.register = async (req, res) => {
       message: 'Registration successful',
       accessToken: sessionData.accessToken,
       refreshToken: sessionData.refreshToken,
-      apiKey: process.env.API_KEY,
       deviceId: sessionData.deviceId,
       user: sessionData.user
     });

@@ -45,7 +45,6 @@ exports.login = async (req, res) => {
       message: 'Authentication successful',
       accessToken: sessionData.accessToken,
       refreshToken: sessionData.refreshToken,
-      apiKey: process.env.API_KEY,
       deviceId: sessionData.deviceId,
       user: sessionData.user
     });
@@ -84,13 +83,14 @@ exports.refreshToken = async (req, res) => {
 
 // Logout user
 exports.logout = async (req, res) => {
-  const { deviceId, userId } = req.body;
+  const { deviceId } = req.body;
+  const userId = req.user.userId; // Get userId from validated token
   
   logger.info(`Logout attempt for user: ${userId}, device: ${deviceId}`);
   
-  if (!deviceId || !userId) {
-    logger.warn('Logout failed - Missing device ID or user ID');
-    return res.status(400).json({ success: false, error: 'Device ID and User ID are required' });
+  if (!deviceId) {
+    logger.warn('Logout failed - Missing device ID');
+    return res.status(400).json({ success: false, error: 'Device ID is required' });
   }
 
   try {
@@ -105,14 +105,9 @@ exports.logout = async (req, res) => {
 
 // Logout from all devices
 exports.logoutAll = async (req, res) => {
-  const { userId } = req.body;
+  const userId = req.user.userId; // Get userId from validated token
   
   logger.info(`Logout from all devices attempt for user: ${userId}`);
-  
-  if (!userId) {
-    logger.warn('Logout all failed - Missing user ID');
-    return res.status(400).json({ success: false, error: 'User ID is required' });
-  }
 
   try {
     await sessionService.logoutAllSessions(userId);
@@ -126,14 +121,9 @@ exports.logoutAll = async (req, res) => {
 
 // List active sessions
 exports.listSessions = async (req, res) => {
-  const { userId } = req.body;
+  const userId = req.user.userId; // Get userId from validated token
   
   logger.info(`Listing sessions for user: ${userId}`);
-  
-  if (!userId) {
-    logger.warn('List sessions failed - Missing user ID');
-    return res.status(400).json({ success: false, error: 'User ID is required' });
-  }
 
   try {
     const sessions = await sessionService.getUserSessions(userId);
