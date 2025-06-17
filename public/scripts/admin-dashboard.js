@@ -18,6 +18,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize timeframe buttons
     initializeTimeframeButtons();
     
+    // Fetch and display environment info
+    fetchEnvironmentInfo();
+    
     // Set up refresh button
     const refreshBtn = document.getElementById('refresh-users-btn');
     if (refreshBtn) {
@@ -1135,5 +1138,38 @@ async function updateActiveUsers(range) {
     } catch (error) {
         console.error('Error fetching active users stats:', error);
         showNotification('Failed to fetch active users stats', 'error');
+    }
+}
+
+// Function to fetch and display environment information
+async function fetchEnvironmentInfo() {
+    const indicator = document.getElementById('environment-indicator');
+    const text = document.getElementById('environment-text');
+    
+    if (!indicator || !text) {
+        console.warn('Environment indicator elements not found');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/admin/environment', {
+            headers: getAuthHeaders()
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+                text.textContent = data.environment;
+                indicator.className = `environment-indicator ${data.environment}`;
+            } else {
+                throw new Error(data.error || 'Failed to get environment info');
+            }
+        } else {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+    } catch (error) {
+        console.error('Error fetching environment info:', error);
+        text.textContent = 'Unknown';
+        indicator.className = 'environment-indicator loading';
     }
 }

@@ -210,6 +210,24 @@ exports.getHardwareInfo = async (req, res) => {
   }
 };
 
+exports.getEnvironmentInfo = async (req, res) => {
+  logger.info('Admin request - Getting environment info');
+  
+  try {
+    const nodeEnv = process.env.NODE_ENV;
+    const isDevelopment = nodeEnv === 'dev' || nodeEnv === 'develop' || nodeEnv === 'development';
+    
+    res.json({ 
+      success: true, 
+      environment: isDevelopment ? 'development' : 'production',
+      nodeEnv: nodeEnv || 'undefined'
+    });
+  } catch (error) {
+    logger.error('Admin - Error getting environment info:', error);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+};
+
 // Helper function for time filtering
 function getTimeFilter(range) {
   const now = new Date();

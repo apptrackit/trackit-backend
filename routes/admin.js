@@ -403,6 +403,37 @@ router.get('/hardwareinfo', validateAdminToken, (req, res) => {
 
 /**
  * @swagger
+ * /admin/environment:
+ *   get:
+ *     summary: Get environment information
+ *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Environment information retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 environment:
+ *                   type: string
+ *                   enum: [development, production]
+ *                 nodeEnv:
+ *                   type: string
+ *       401:
+ *         description: Invalid token
+ */
+router.get('/environment', validateAdminToken, (req, res) => {
+  logger.info(`Admin environment request from ${req.adminUser.username} at ${req.ip}`);
+  adminController.getEnvironmentInfo(req, res);
+});
+
+/**
+ * @swagger
  * /admin/check:
  *   post:
  *     summary: Legacy admin check (deprecated)

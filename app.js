@@ -10,7 +10,8 @@ const swaggerSpecs = require('./utils/swagger');
 app.use(express.json());
 
 // Conditionally enable Swagger UI
-const isDevelopment = process.env.NODE_ENV !== 'prod' && process.env.NODE_ENV !== 'production';
+const nodeEnv = process.env.NODE_ENV;
+const isDevelopment = nodeEnv === 'dev' || nodeEnv === 'develop' || nodeEnv === 'development';
 
 if (isDevelopment) {
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
