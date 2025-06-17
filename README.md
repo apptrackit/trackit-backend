@@ -86,8 +86,7 @@ Create a `.env` file in the root directory:
 # Database Configuration
 DATABASE_URL=postgres://username:password@localhost:5432/database_name
 
-# API Security
-API_KEY=your_secure_api_key_here
+# JWT Security
 JWT_SECRET=your_secure_jwt_secret_here
 
 # Server Configuration
@@ -100,7 +99,6 @@ SALT=10  # Number of salt rounds for password hashing
 # Admin Account
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=admin
-ADMIN_API_KEY=your_admin_api_key_here
 
 # Environment
 NODE_ENV=development
@@ -300,13 +298,9 @@ The system uses multiple authentication mechanisms:
 
 ### Admin Authentication
 - **Bearer Tokens**: Secure admin session tokens (1 hour expiration)
+- **JWT Authentication**: User authentication with access/refresh tokens
 - **Auto-cleanup**: Expired tokens are automatically removed
 - **Session Validation**: Token validation endpoint for dashboard
-
-### API Key Protection
-All endpoints require API key validation via:
-- Header: `x-api-key: your_api_key`
-- Admin endpoints require separate admin API key
 
 ## API Endpoints
 
@@ -321,29 +315,28 @@ All endpoints require API key validation via:
 
 #### Token Refresh
 - **POST** `/auth/refresh`
-- **Headers**: `x-api-key`
 - **Body**: `{ "refreshToken": "token", "deviceId": "id" }`
 - **Returns**: New access and refresh tokens
 
 #### Session Check
 - **GET** `/auth/check`
-- **Headers**: `x-api-key`, `Authorization: Bearer token`
+- **Headers**: `Authorization: Bearer token`
 - **Returns**: Session validity and user info
 
 #### Logout
 - **POST** `/auth/logout`
-- **Headers**: `x-api-key`
-- **Body**: `{ "deviceId": "id", "userId": "id" }`
+- **Headers**: `Authorization: Bearer token`
+- **Body**: `{ "deviceId": "id" }`
 
 #### Logout All Devices
 - **POST** `/auth/logout-all`
-- **Headers**: `x-api-key`
-- **Body**: `{ "userId": "id" }`
+- **Headers**: `Authorization: Bearer token`
+- **Body**: `{}` (empty - user identified from token)
 
 #### List Active Sessions
 - **POST** `/auth/sessions`
-- **Headers**: `x-api-key`
-- **Body**: `{ "userId": "id" }`
+- **Headers**: `Authorization: Bearer token`
+- **Body**: `{}` (empty - user identified from token)
 - **Returns**: Array of active sessions with device info
 
 ### User Management Routes (`/user`)
@@ -355,27 +348,27 @@ All endpoints require API key validation via:
 
 #### Change Password
 - **POST** `/user/change/password`
-- **Headers**: `x-api-key`
+- **Headers**: `Authorization: Bearer token`
 - **Body**: `{ "username": "user", "oldPassword": "old", "newPassword": "new" }`
 
 #### Change Username
 - **POST** `/user/change/username`
-- **Headers**: `x-api-key`
+- **Headers**: `Authorization: Bearer token`
 - **Body**: `{ "oldUsername": "old", "newUsername": "new", "password": "pass" }`
 
 #### Change Email
 - **POST** `/user/change/email`
-- **Headers**: `x-api-key`
+- **Headers**: `Authorization: Bearer token`
 - **Body**: `{ "username": "user", "newEmail": "email", "password": "pass" }`
 
 #### Delete Account
 - **POST** `/user/delete`
-- **Headers**: `x-api-key`
+- **Headers**: `Authorization: Bearer token`
 - **Body**: `{ "username": "user", "password": "pass" }`
 
 ### Metric Management Routes (`/api/metrics`)
 
-All metric endpoints require: `x-api-key` header and `Authorization: Bearer token`
+All metric endpoints require: `Authorization: Bearer token` header
 
 #### Create Metric Entry
 - **POST** `/api/metrics`
@@ -394,7 +387,7 @@ All metric endpoints require: `x-api-key` header and `Authorization: Bearer toke
 #### Admin Login
 - **POST** `/admin/login`
 - **Body**: `{ "username": "admin", "password": "admin" }`
-- **Returns**: Bearer token, admin API key, regular API key
+- **Returns**: Bearer token and expiration time
 
 #### Token Validation
 - **POST** `/admin/validate-token`
@@ -440,7 +433,7 @@ The API returns consistent error responses:
 - `200`: Success
 - `201`: Created
 - `400`: Bad Request (missing/invalid data)
-- `401`: Unauthorized (invalid/missing token/API key)
+- `401`: Unauthorized (invalid/missing token)
 - `403`: Forbidden (insufficient permissions)
 - `404`: Not Found
 - `409`: Conflict (duplicate data)
@@ -467,7 +460,7 @@ sudo sensors-detect
 
 1. **Password Hashing**: bcrypt with configurable salt rounds
 2. **JWT Security**: Signed tokens with expiration
-3. **API Key Validation**: Required for all endpoints
+3. **Bearer Token Authentication**: Required for protected endpoints
 4. **Session Management**: Device-based tracking with limits
 5. **Admin Token Expiration**: 1-hour admin sessions with auto-cleanup
 6. **Input Validation**: Email format, required fields
@@ -524,7 +517,7 @@ Customize logging in `utils/logger.js`:
 
 ### Token Management
 1. Store tokens securely (keychain/secure storage)
-2. Include API key in all requests
+2. Include bearer tokens in authorization headers
 3. Handle token refresh automatically on 401 errors
 4. Implement proper logout flow
 

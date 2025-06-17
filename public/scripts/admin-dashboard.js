@@ -18,6 +18,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize timeframe buttons
     initializeTimeframeButtons();
     
+    // Fetch and display environment info
+    fetchEnvironmentInfo();
+    
     // Set up refresh button
     const refreshBtn = document.getElementById('refresh-users-btn');
     if (refreshBtn) {
@@ -55,7 +58,6 @@ function isValidSession() {
 
 function clearSession() {
     localStorage.removeItem('adminBearerToken');
-    localStorage.removeItem('apiKey');
     localStorage.removeItem('tokenExpiresAt');
 }
 
@@ -837,12 +839,9 @@ async function updateHardwareInfo() {
 // Function to fetch user's active sessions count
 async function fetchUserSessionsCount(userId) {
     try {
-        const response = await fetch('/auth/sessions', {
+        const response = await fetch('/admin/user-sessions', {
             method: 'POST',
-            headers: {
-                'x-api-key': localStorage.getItem('apiKey'),
-                'Content-Type': 'application/json'
-            },
+            headers: getAuthHeaders(),
             body: JSON.stringify({ userId })
         });
         
@@ -930,12 +929,9 @@ function showUserSessions(user) {
 // Function to fetch and display user's sessions
 async function fetchUserSessions(userId, container) {
     try {
-        const response = await fetch('/auth/sessions', {
+        const response = await fetch('/admin/user-sessions', {
             method: 'POST',
-            headers: {
-                'x-api-key': localStorage.getItem('apiKey'),
-                'Content-Type': 'application/json'
-            },
+            headers: getAuthHeaders(),
             body: JSON.stringify({ userId })
         });
         
@@ -1011,12 +1007,9 @@ async function fetchUserSessions(userId, container) {
 // Function to logout a specific session
 async function logoutSession(deviceId, userId) {
     try {
-        const response = await fetch('/auth/logout', {
+        const response = await fetch('/admin/logout-user-session', {
             method: 'POST',
-            headers: {
-                'x-api-key': localStorage.getItem('apiKey'),
-                'Content-Type': 'application/json'
-            },
+            headers: getAuthHeaders(),
             body: JSON.stringify({ deviceId, userId })
         });
         
@@ -1039,12 +1032,9 @@ async function logoutSession(deviceId, userId) {
 // Function to logout all sessions for a user
 async function logoutAllUserSessions(userId) {
     try {
-        const response = await fetch('/auth/logout-all', {
+        const response = await fetch('/admin/logout-all-user-sessions', {
             method: 'POST',
-            headers: {
-                'x-api-key': localStorage.getItem('apiKey'),
-                'Content-Type': 'application/json'
-            },
+            headers: getAuthHeaders(),
             body: JSON.stringify({ userId })
         });
         
@@ -1135,5 +1125,38 @@ async function updateActiveUsers(range) {
     } catch (error) {
         console.error('Error fetching active users stats:', error);
         showNotification('Failed to fetch active users stats', 'error');
+    }
+}
+
+// Function to fetch and display environment information
+async function fetchEnvironmentInfo() {
+    const indicator = document.getElementById('environment-indicator');
+    const text = document.getElementById('environment-text');
+    
+    if (!indicator || !text) {
+        console.warn('Environment indicator elements not found');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/admin/environment', {
+            headers: getAuthHeaders()
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+                text.textContent = data.environment;
+                indicator.className = `environment-indicator ${data.environment}`;
+            } else {
+                throw new Error(data.error || 'Failed to get environment info');
+            }
+        } else {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+    } catch (error) {
+        console.error('Error fetching environment info:', error);
+        text.textContent = 'Unknown';
+        indicator.className = 'environment-indicator loading';
     }
 }

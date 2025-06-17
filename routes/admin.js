@@ -38,10 +38,6 @@ const logger = require('../utils/logger');
  *                   type: boolean
  *                 bearerToken:
  *                   type: string
- *                 adminApiKey:
- *                   type: string
- *                 apiKey:
- *                   type: string
  *                 username:
  *                   type: string
  *                 expiresAt:
@@ -79,8 +75,6 @@ router.post('/login', async (req, res) => {
       res.json({
         success: true,
         bearerToken: token,
-        adminApiKey: process.env.ADMIN_API_KEY,
-        apiKey: process.env.API_KEY,
         username: username,
         message: 'Admin login successful',
         expiresAt: expiresAt.toISOString()
@@ -399,6 +393,130 @@ router.get('/active-users', validateAdminToken, (req, res) => {
 router.get('/hardwareinfo', validateAdminToken, (req, res) => {
   logger.info(`Admin hardwareinfo request from ${req.adminUser.username} at ${req.ip}`);
   adminController.getHardwareInfo(req, res);
+});
+
+/**
+ * @swagger
+ * /admin/environment:
+ *   get:
+ *     summary: Get environment information
+ *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Environment information retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 environment:
+ *                   type: string
+ *                   enum: [development, production]
+ *                 nodeEnv:
+ *                   type: string
+ *       401:
+ *         description: Invalid token
+ */
+router.get('/environment', validateAdminToken, (req, res) => {
+  logger.info(`Admin environment request from ${req.adminUser.username} at ${req.ip}`);
+  adminController.getEnvironmentInfo(req, res);
+});
+
+/**
+ * @swagger
+ * /admin/user-sessions:
+ *   post:
+ *     summary: Get user sessions (admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - AdminBearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userId
+ *             properties:
+ *               userId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: User sessions retrieved successfully
+ *       401:
+ *         description: Invalid token
+ */
+router.post('/user-sessions', validateAdminToken, (req, res) => {
+  logger.info(`Admin user-sessions request from ${req.adminUser.username} at ${req.ip} for user: ${req.body.userId}`);
+  adminController.getUserSessions(req, res);
+});
+
+/**
+ * @swagger
+ * /admin/logout-user-session:
+ *   post:
+ *     summary: Logout specific user session (admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - AdminBearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userId
+ *               - deviceId
+ *             properties:
+ *               userId:
+ *                 type: string
+ *               deviceId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: User session logged out successfully
+ *       401:
+ *         description: Invalid token
+ */
+router.post('/logout-user-session', validateAdminToken, (req, res) => {
+  logger.info(`Admin logout-user-session request from ${req.adminUser.username} at ${req.ip} for user: ${req.body.userId}`);
+  adminController.logoutUserSession(req, res);
+});
+
+/**
+ * @swagger
+ * /admin/logout-all-user-sessions:
+ *   post:
+ *     summary: Logout all user sessions (admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - AdminBearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userId
+ *             properties:
+ *               userId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: All user sessions logged out successfully
+ *       401:
+ *         description: Invalid token
+ */
+router.post('/logout-all-user-sessions', validateAdminToken, (req, res) => {
+  logger.info(`Admin logout-all-user-sessions request from ${req.adminUser.username} at ${req.ip} for user: ${req.body.userId}`);
+  adminController.logoutAllUserSessions(req, res);
 });
 
 /**

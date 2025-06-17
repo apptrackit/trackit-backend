@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const metricController = require('../controllers/metricController');
-const { validateToken, validateApiKey } = require('../auth');
+const { validateToken } = require('../auth');
 
 // Protect these routes with authentication
-router.use(validateApiKey, validateToken);
+router.use(validateToken);
 
 /**
  * @swagger
@@ -13,7 +13,6 @@ router.use(validateApiKey, validateToken);
  *     summary: Create a new metric entry
  *     tags: [Metrics]
  *     security:
- *       - ApiKeyAuth: []
  *       - BearerAuth: []
  *     requestBody:
  *       required: true
@@ -41,7 +40,6 @@ router.post('/', metricController.createMetricEntry);
  *     summary: Update a metric entry
  *     tags: [Metrics]
  *     security:
- *       - ApiKeyAuth: []
  *       - BearerAuth: []
  *     parameters:
  *       - in: path
@@ -77,7 +75,6 @@ router.put('/:entryId', metricController.updateMetricEntry);
  *     summary: Delete a metric entry
  *     tags: [Metrics]
  *     security:
- *       - ApiKeyAuth: []
  *       - BearerAuth: []
  *     parameters:
  *       - in: path

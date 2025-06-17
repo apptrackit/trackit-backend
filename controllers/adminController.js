@@ -210,6 +210,87 @@ exports.getHardwareInfo = async (req, res) => {
   }
 };
 
+exports.getEnvironmentInfo = async (req, res) => {
+  logger.info('Admin request - Getting environment info');
+  
+  try {
+    const nodeEnv = process.env.NODE_ENV;
+    const isDevelopment = nodeEnv === 'dev' || nodeEnv === 'develop' || nodeEnv === 'development';
+    
+    res.json({ 
+      success: true, 
+      environment: isDevelopment ? 'development' : 'production',
+      nodeEnv: nodeEnv || 'undefined'
+    });
+  } catch (error) {
+    logger.error('Admin - Error getting environment info:', error);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+};
+
+exports.getUserSessions = async (req, res) => {
+  const { userId } = req.body;
+  
+  logger.info(`Admin request - Getting sessions for user: ${userId}`);
+  
+  if (!userId) {
+    logger.warn('Admin - Get user sessions failed - Missing userId');
+    return res.status(400).json({ success: false, error: 'User ID is required' });
+  }
+
+  try {
+    const sessions = await sessionService.getUserSessions(userId);
+    logger.info(`Admin - Retrieved ${sessions.length} sessions for user: ${userId}`);
+    res.json({
+      success: true,
+      sessions: sessions
+    });
+  } catch (error) {
+    logger.error('Admin - Error getting user sessions:', error);
+    res.status(500).json({ success: false, error: 'Database error' });
+  }
+};
+
+exports.logoutUserSession = async (req, res) => {
+  const { userId, deviceId } = req.body;
+  
+  logger.info(`Admin request - Logout user session for user: ${userId}, device: ${deviceId}`);
+  
+  if (!userId || !deviceId) {
+    logger.warn('Admin - Logout user session failed - Missing userId or deviceId');
+    return res.status(400).json({ success: false, error: 'User ID and Device ID are required' });
+  }
+
+  try {
+    await sessionService.logoutSession(deviceId, userId);
+    logger.info(`Admin - User session logged out successfully - User: ${userId}, Device: ${deviceId}`);
+    res.json({ success: true, message: 'User session logged out successfully' });
+  } catch (error) {
+    logger.error('Admin - Error logging out user session:', error);
+    res.status(500).json({ success: false, error: 'Database error' });
+  }
+};
+
+exports.logoutAllUserSessions = async (req, res) => {
+  const { userId } = req.body;
+  
+  logger.info(`Admin request - Logout all sessions for user: ${userId}`);
+  
+  if (!userId) {
+    logger.warn('Admin - Logout all user sessions failed - Missing userId');
+    return res.status(400).json({ success: false, error: 'User ID is required' });
+  }
+
+  try {
+    await sessionService.logoutAllSessions(userId);
+    logger.info(`Admin - All user sessions logged out successfully - User: ${userId}`);
+    res.json({ success: true, message: 'All user sessions logged out successfully' });
+  } catch (error) {
+    logger.error('Admin - Error logging out all user sessions:', error);
+    res.status(500).json({ success: false, error: 'Database error' });
+  }
+};
+
 // Helper function for time filtering
 function getTimeFilter(range) {
   const now = new Date();

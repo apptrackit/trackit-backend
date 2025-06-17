@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { validateApiKey, validateToken } = require('../auth');
+const { validateToken } = require('../auth');
 const authController = require('../controllers/authController');
 
 /**
@@ -37,8 +37,6 @@ router.post('/login', authController.login);
  *   post:
  *     summary: Refresh authentication token
  *     tags: [Auth]
- *     security:
- *       - ApiKeyAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -57,9 +55,9 @@ router.post('/login', authController.login);
  *       200:
  *         description: Token refreshed successfully
  *       401:
- *         description: Invalid API key or refresh token
+ *         description: Invalid refresh token
  */
-router.post('/refresh', validateApiKey, authController.refreshToken);
+router.post('/refresh', authController.refreshToken);
 
 /**
  * @swagger
@@ -68,7 +66,7 @@ router.post('/refresh', validateApiKey, authController.refreshToken);
  *     summary: Logout from current session
  *     tags: [Auth]
  *     security:
- *       - ApiKeyAuth: []
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -77,19 +75,16 @@ router.post('/refresh', validateApiKey, authController.refreshToken);
  *             type: object
  *             required:
  *               - deviceId
- *               - userId
  *             properties:
  *               deviceId:
- *                 type: string
- *               userId:
  *                 type: string
  *     responses:
  *       200:
  *         description: Logout successful
  *       401:
- *         description: Invalid API key
+ *         description: Invalid request
  */
-router.post('/logout', validateApiKey, authController.logout);
+router.post('/logout', validateToken, authController.logout);
 
 /**
  * @swagger
@@ -98,25 +93,20 @@ router.post('/logout', validateApiKey, authController.logout);
  *     summary: Logout from all devices
  *     tags: [Auth]
  *     security:
- *       - ApiKeyAuth: []
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - userId
- *             properties:
- *               userId:
- *                 type: string
  *     responses:
  *       200:
  *         description: Logout from all devices successful
  *       401:
- *         description: Invalid API key
+ *         description: Invalid token
  */
-router.post('/logout-all', validateApiKey, authController.logoutAll);
+router.post('/logout-all', validateToken, authController.logoutAll);
 
 /**
  * @swagger
@@ -125,14 +115,14 @@ router.post('/logout-all', validateApiKey, authController.logoutAll);
  *     summary: List active sessions
  *     tags: [Auth]
  *     security:
- *       - ApiKeyAuth: []
+ *       - BearerAuth: []
  *     responses:
  *       200:
  *         description: List of active sessions
  *       401:
- *         description: Invalid API key
+ *         description: Invalid request
  */
-router.post('/sessions', validateApiKey, authController.listSessions);
+router.post('/sessions', validateToken, authController.listSessions);
 
 /**
  * @swagger
@@ -141,13 +131,13 @@ router.post('/sessions', validateApiKey, authController.listSessions);
  *     summary: Check session status
  *     tags: [Auth]
  *     security:
- *       - ApiKeyAuth: []
+ *       - BearerAuth: []
  *     responses:
  *       200:
  *         description: Session is valid
  *       401:
  *         description: Invalid API key or session
  */
-router.get('/check', validateApiKey, authController.checkSession);
+router.get('/check', validateToken, authController.checkSession);
 
 module.exports = router;

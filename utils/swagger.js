@@ -20,12 +20,6 @@ const options = {
     ],
     components: {
       securitySchemes: {
-        ApiKeyAuth: {
-          type: 'apiKey',
-          in: 'header',
-          name: 'x-api-key',
-          description: 'API Key for authentication'
-        },
         BearerAuth: {
           type: 'http',
           scheme: 'bearer',
@@ -41,9 +35,6 @@ const options = {
       }
     },
     security: [
-      {
-        ApiKeyAuth: []
-      },
       {
         BearerAuth: []
       },
