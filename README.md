@@ -48,6 +48,15 @@ ADMIN_API_KEY=your_admin_api_key_here
 
 # Environment
 NODE_ENV=development
+
+# Email Configuration
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_SECURE=false
+EMAIL_USER=your_email@gmail.com
+EMAIL_PASS=your_app_password_here
+EMAIL_FROM=TrackIt <your_email@gmail.com>
+EMAIL_TLS_REJECT_UNAUTHORIZED=true
 ```
 
 ## Project Structure
@@ -423,6 +432,83 @@ Customize logging in `utils/logger.js`:
 2. Show user-friendly error messages
 3. Handle network connectivity issues
 4. Implement retry logic for failed requests
+
+## Email Service
+
+The application includes a comprehensive email service for sending HTML emails. The service supports:
+
+- **HTML Email Sending**: Send rich HTML emails with styling
+- **Environment Configuration**: All email settings configured via environment variables
+- **Built-in Templates**: Welcome emails and password reset emails
+- **Multiple Recipients**: Support for CC, BCC, and multiple recipients
+- **Attachments**: Support for email attachments
+- **Connection Verification**: Test email configuration before sending
+
+### Email Configuration
+
+Configure the following environment variables in your `.env` file:
+
+```env
+EMAIL_HOST=smtp.gmail.com          # SMTP server host
+EMAIL_PORT=587                     # SMTP server port
+EMAIL_SECURE=false                 # Use SSL/TLS (true for port 465)
+EMAIL_USER=your_email@gmail.com    # Email account username
+EMAIL_PASS=your_app_password       # Email account password (use app password for Gmail)
+EMAIL_FROM=TrackIt <your_email@gmail.com>  # Default sender address
+EMAIL_TLS_REJECT_UNAUTHORIZED=true # TLS certificate validation
+```
+
+### Popular Email Provider Settings
+
+**Gmail:**
+- Host: `smtp.gmail.com`
+- Port: `587`
+- Secure: `false`
+- Note: Use app passwords instead of your regular password
+
+**Outlook/Hotmail:**
+- Host: `smtp-mail.outlook.com`
+- Port: `587`
+- Secure: `false`
+
+**Yahoo:**
+- Host: `smtp.mail.yahoo.com`
+- Port: `587`
+- Secure: `false`
+
+### Usage Examples
+
+```javascript
+const emailService = require('./services/emailService');
+
+// Send simple HTML email
+await emailService.sendSimpleHtmlEmail(
+  'user@example.com',
+  'Subject',
+  '<h1>Hello!</h1><p>HTML content here</p>'
+);
+
+// Send detailed email with all options
+await emailService.sendHtmlEmail({
+  to: 'user@example.com',
+  subject: 'Subject',
+  html: '<h1>HTML content</h1>',
+  cc: ['cc@example.com'],
+  bcc: ['bcc@example.com'],
+  attachments: [/* attachment objects */]
+});
+
+// Send welcome email (built-in template)
+await emailService.sendWelcomeEmail('user@example.com', 'Username');
+
+// Send password reset email (built-in template)
+await emailService.sendPasswordResetEmail('user@example.com', 'Username', 'reset-link');
+
+// Verify email configuration
+const isValid = await emailService.verifyConnection();
+```
+
+See `examples/emailExamples.js` for complete usage examples.
 
 ## Contributing
 
