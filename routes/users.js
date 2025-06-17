@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { validateApiKey } = require('../auth');
+const { validateToken } = require('../auth');
 const userController = require('../controllers/userController');
 
 /**
@@ -42,7 +42,7 @@ router.post('/register', userController.register);
  *     summary: Change user password
  *     tags: [Users]
  *     security:
- *       - ApiKeyAuth: []
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -63,7 +63,7 @@ router.post('/register', userController.register);
  *       401:
  *         description: Invalid API key or current password
  */
-router.post('/change/password', validateApiKey, userController.changePassword);
+router.post('/change/password', validateToken, userController.changePassword);
 
 /**
  * @swagger
@@ -72,7 +72,7 @@ router.post('/change/password', validateApiKey, userController.changePassword);
  *     summary: Change username
  *     tags: [Users]
  *     security:
- *       - ApiKeyAuth: []
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -90,7 +90,7 @@ router.post('/change/password', validateApiKey, userController.changePassword);
  *       401:
  *         description: Invalid API key
  */
-router.post('/change/username', validateApiKey, userController.changeUsername);
+router.post('/change/username', validateToken, userController.changeUsername);
 
 /**
  * @swagger
@@ -99,7 +99,7 @@ router.post('/change/username', validateApiKey, userController.changeUsername);
  *     summary: Change email address
  *     tags: [Users]
  *     security:
- *       - ApiKeyAuth: []
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -124,7 +124,7 @@ router.post('/change/username', validateApiKey, userController.changeUsername);
  *       401:
  *         description: Invalid API key
  */
-router.post('/change/email', validateApiKey, userController.changeEmail);
+router.post('/change/email', validateToken, userController.changeEmail);
 
 /**
  * @swagger
@@ -133,13 +133,13 @@ router.post('/change/email', validateApiKey, userController.changeEmail);
  *     summary: Delete user account
  *     tags: [Users]
  *     security:
- *       - ApiKeyAuth: []
+ *       - BearerAuth: []
  *     responses:
  *       200:
  *         description: Account deleted successfully
  *       401:
  *         description: Invalid API key
  */
-router.post('/delete', validateApiKey, userController.deleteAccount);
+router.post('/delete', validateToken, userController.deleteAccount);
 
 module.exports = router;

@@ -2,11 +2,33 @@
 
 A comprehensive REST API for user management, authentication, and metric tracking with admin dashboard.
 
+## Table of Contents
+
+- [Prerequisites](#prerequisites)
+- [Quick Start Guide](#quick-start-guide)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Project Structure](#project-structure)
+- [Database](#database)
+- [Running the Server](#running-the-server)
+- [API Documentation](#api-documentation)
+- [Admin Dashboard](#admin-dashboard)
+- [Authentication System](#authentication-system)
+- [API Endpoints](#api-endpoints)
+- [Error Handling](#error-handling)
+- [Hardware Monitoring](#hardware-monitoring)
+- [Security Features](#security-features)
+- [Email Service](#email-service)
+- [Development](#development)
+- [Deployment Considerations](#deployment-considerations)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+
 ## Prerequisites
 
-- Node.js (v14 or later)
-- npm
-- PostgreSQL
+- Node.js (v18 or later)
+- npm (v8 or later)
+- PostgreSQL (v12 or later)
 - lm-sensors (for hardware monitoring on Linux)
 
 ## Installation
@@ -22,6 +44,40 @@ cd trackit-backend
 npm install
 ```
 
+## Quick Start Guide
+
+1. **Clone and Install**:
+   ```bash
+   git clone https://github.com/apptrackit/trackit-backend
+   cd trackit-backend
+   npm install
+   ```
+
+2. **Set up Environment**:
+   ```bash
+   touch .env
+   ```
+
+3. **Set up Database**:
+   ```bash
+   # Create PostgreSQL database
+   createdb trackitdb
+   
+   # Tables will be auto-created on first run
+   ```
+
+4. **Start the Server**:
+   ```bash
+   npm run dev  # For development
+   # OR
+   npm start    # For production
+   ```
+
+5. **Access Services**:
+   - API Server: `http://localhost:3000`
+   - Admin Dashboard: `http://localhost:3000/`
+   - API Documentation: `http://localhost:3000/api-docs` (dev mode only)
+
 ## Configuration
 
 Create a `.env` file in the root directory:
@@ -30,8 +86,7 @@ Create a `.env` file in the root directory:
 # Database Configuration
 DATABASE_URL=postgres://username:password@localhost:5432/database_name
 
-# API Security
-API_KEY=your_secure_api_key_here
+# JWT Security
 JWT_SECRET=your_secure_jwt_secret_here
 
 # Server Configuration
@@ -44,10 +99,18 @@ SALT=10  # Number of salt rounds for password hashing
 # Admin Account
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=admin
-ADMIN_API_KEY=your_admin_api_key_here
 
 # Environment
 NODE_ENV=development
+
+# Email Configuration
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_SECURE=false
+EMAIL_USER=your_email@gmail.com
+EMAIL_PASS=your_app_password_here
+EMAIL_FROM=TrackIt <your_email@gmail.com>
+EMAIL_TLS_REJECT_UNAUTHORIZED=true
 ```
 
 ## Project Structure
@@ -58,31 +121,49 @@ trackit-backend/
 ├── app.js                    # Main application entry point
 ├── auth.js                   # Authentication middleware
 ├── database.js               # Database connection and setup
+├── package.json              # Project dependencies and scripts
+├── package-lock.json         # Dependency lock file
+├── .env                      # Environment variables (create from template)
+├── .gitignore               # Git ignore rules
 │
-├── controllers/              # Business logic
-│   ├── authController.js     # Authentication logic
-│   ├── userController.js     # User management logic
+├── controllers/              # Business logic controllers
 │   ├── adminController.js    # Admin operations
-│   └── metricController.js   # Metric tracking logic
+│   ├── authController.js     # Authentication logic
+│   ├── metricController.js   # Metric tracking logic
+│   └── userController.js     # User management logic
 │
 ├── routes/                   # API route definitions
-│   ├── auth.js              # Authentication routes
-│   ├── users.js             # User management routes
 │   ├── admin.js             # Admin routes
-│   └── metrics.js           # Metric tracking routes
+│   ├── auth.js              # Authentication routes
+│   ├── metrics.js           # Metric tracking routes
+│   └── users.js             # User management routes
+│
+├── services/                 # Business logic services
+│   ├── authService.js       # Authentication service
+│   ├── emailService.js      # Email sending service
+│   ├── hardwareService.js   # Hardware monitoring service
+│   ├── metricService.js     # Metric data service
+│   ├── sessionService.js    # Session management service
+│   └── userService.js       # User data service
 │
 ├── utils/                    # Utility modules
-│   └── logger.js            # Winston logging configuration
+│   ├── logger.js            # Winston logging configuration
+│   └── swagger.js           # Swagger API documentation setup
 │
-└── public/                  # Static files and admin dashboard
-    ├── index.html           # Admin login page
-    ├── admin-dashboard.html # Admin dashboard
-    ├── css/
-    │   ├── index.css        # Login page styles
-    │   └── admin-dashboard.css # Dashboard styles
-    └── scripts/
-        ├── index.js         # Login page logic
-        └── admin-dashboard.js # Dashboard logic
+├── public/                   # Static files and admin dashboard
+│   ├── index.html           # Admin login page
+│   ├── admin-dashboard.html # Admin dashboard
+│   ├── css/
+│   │   ├── index.css        # Login page styles
+│   │   └── admin-dashboard.css # Dashboard styles
+│   └── scripts/
+│       ├── admin-dashboard.js   # Dashboard logic
+│       ├── clipboard-helper.js  # Clipboard utility functions
+│       └── index.js            # Login page logic
+│
+└── logs/                     # Application logs (auto-created)
+    ├── combined.log         # All log levels
+    └── error.log           # Error logs only
 ```
 
 ## Logging
@@ -180,6 +261,19 @@ npm run dev
 
 The server will run on `http://localhost:3000` by default.
 
+## API Documentation
+
+Interactive API documentation is available via Swagger UI when running in development mode:
+- **Swagger UI**: `http://localhost:3000/api-docs`
+
+The Swagger documentation provides:
+- Complete API endpoint reference
+- Request/response schemas
+- Authentication examples
+- Interactive testing interface
+
+*Note: Swagger UI is only available in development mode for security reasons.*
+
 ## Admin Dashboard
 
 Access the admin dashboard at `http://localhost:3000/` with your admin credentials.
@@ -204,15 +298,13 @@ The system uses multiple authentication mechanisms:
 
 ### Admin Authentication
 - **Bearer Tokens**: Secure admin session tokens (1 hour expiration)
+- **JWT Authentication**: User authentication with access/refresh tokens
 - **Auto-cleanup**: Expired tokens are automatically removed
 - **Session Validation**: Token validation endpoint for dashboard
 
-### API Key Protection
-All endpoints require API key validation via:
-- Header: `x-api-key: your_api_key`
-- Admin endpoints require separate admin API key
-
 ## API Endpoints
+
+> 💡 **Tip**: For interactive API testing, visit the Swagger UI at `http://localhost:3000/api-docs` when running in development mode.
 
 ### Authentication Routes (`/auth`)
 
@@ -223,29 +315,28 @@ All endpoints require API key validation via:
 
 #### Token Refresh
 - **POST** `/auth/refresh`
-- **Headers**: `x-api-key`
 - **Body**: `{ "refreshToken": "token", "deviceId": "id" }`
 - **Returns**: New access and refresh tokens
 
 #### Session Check
 - **GET** `/auth/check`
-- **Headers**: `x-api-key`, `Authorization: Bearer token`
+- **Headers**: `Authorization: Bearer token`
 - **Returns**: Session validity and user info
 
 #### Logout
 - **POST** `/auth/logout`
-- **Headers**: `x-api-key`
-- **Body**: `{ "deviceId": "id", "userId": "id" }`
+- **Headers**: `Authorization: Bearer token`
+- **Body**: `{ "deviceId": "id" }`
 
 #### Logout All Devices
 - **POST** `/auth/logout-all`
-- **Headers**: `x-api-key`
-- **Body**: `{ "userId": "id" }`
+- **Headers**: `Authorization: Bearer token`
+- **Body**: `{}` (empty - user identified from token)
 
 #### List Active Sessions
 - **POST** `/auth/sessions`
-- **Headers**: `x-api-key`
-- **Body**: `{ "userId": "id" }`
+- **Headers**: `Authorization: Bearer token`
+- **Body**: `{}` (empty - user identified from token)
 - **Returns**: Array of active sessions with device info
 
 ### User Management Routes (`/user`)
@@ -257,27 +348,27 @@ All endpoints require API key validation via:
 
 #### Change Password
 - **POST** `/user/change/password`
-- **Headers**: `x-api-key`
+- **Headers**: `Authorization: Bearer token`
 - **Body**: `{ "username": "user", "oldPassword": "old", "newPassword": "new" }`
 
 #### Change Username
 - **POST** `/user/change/username`
-- **Headers**: `x-api-key`
+- **Headers**: `Authorization: Bearer token`
 - **Body**: `{ "oldUsername": "old", "newUsername": "new", "password": "pass" }`
 
 #### Change Email
 - **POST** `/user/change/email`
-- **Headers**: `x-api-key`
+- **Headers**: `Authorization: Bearer token`
 - **Body**: `{ "username": "user", "newEmail": "email", "password": "pass" }`
 
 #### Delete Account
 - **POST** `/user/delete`
-- **Headers**: `x-api-key`
+- **Headers**: `Authorization: Bearer token`
 - **Body**: `{ "username": "user", "password": "pass" }`
 
 ### Metric Management Routes (`/api/metrics`)
 
-All metric endpoints require: `x-api-key` header and `Authorization: Bearer token`
+All metric endpoints require: `Authorization: Bearer token` header
 
 #### Create Metric Entry
 - **POST** `/api/metrics`
@@ -296,7 +387,7 @@ All metric endpoints require: `x-api-key` header and `Authorization: Bearer toke
 #### Admin Login
 - **POST** `/admin/login`
 - **Body**: `{ "username": "admin", "password": "admin" }`
-- **Returns**: Bearer token, admin API key, regular API key
+- **Returns**: Bearer token and expiration time
 
 #### Token Validation
 - **POST** `/admin/validate-token`
@@ -342,7 +433,7 @@ The API returns consistent error responses:
 - `200`: Success
 - `201`: Created
 - `400`: Bad Request (missing/invalid data)
-- `401`: Unauthorized (invalid/missing token/API key)
+- `401`: Unauthorized (invalid/missing token)
 - `403`: Forbidden (insufficient permissions)
 - `404`: Not Found
 - `409`: Conflict (duplicate data)
@@ -369,7 +460,7 @@ sudo sensors-detect
 
 1. **Password Hashing**: bcrypt with configurable salt rounds
 2. **JWT Security**: Signed tokens with expiration
-3. **API Key Validation**: Required for all endpoints
+3. **Bearer Token Authentication**: Required for protected endpoints
 4. **Session Management**: Device-based tracking with limits
 5. **Admin Token Expiration**: 1-hour admin sessions with auto-cleanup
 6. **Input Validation**: Email format, required fields
@@ -379,8 +470,24 @@ sudo sensors-detect
 ## Development
 
 ### Available Scripts
+
 - `npm start` - Start production server
-- `npm run dev` - Start development server with nodemon
+- `npm run dev` - Start development server with nodemon (auto-restart on changes)
+
+### Dependencies
+
+**Core Dependencies**:
+- `express` - Web framework
+- `pg` - PostgreSQL client
+- `jsonwebtoken` - JWT token handling
+- `bcrypt` - Password hashing
+- `winston` - Logging framework
+- `nodemailer` - Email service
+
+**Development Dependencies**:
+- `nodemon` - Auto-restart during development
+- `swagger-jsdoc` - API documentation generation
+- `swagger-ui-express` - Interactive API documentation UI
 
 ### Environment Variables
 The application requires all environment variables to be set in `.env`. Missing variables will prevent startup.
@@ -397,18 +504,20 @@ Customize logging in `utils/logger.js`:
 
 ## Deployment Considerations
 
-1. **Environment Variables**: Secure storage of secrets
-2. **Database**: PostgreSQL with proper connection pooling
-3. **Logging**: Persistent log storage and rotation
-4. **Hardware Monitoring**: Ensure lm-sensors is installed and configured
+1. **Environment Variables**: Secure storage of secrets in production
+2. **Database**: PostgreSQL with proper connection pooling and backup strategy
+3. **Logging**: Persistent log storage and rotation (consider ELK stack for production)
+4. **Hardware Monitoring**: Ensure lm-sensors is installed and configured on Linux servers
 5. **HTTPS**: Use reverse proxy (nginx/Apache) for SSL termination
-6. **Process Management**: Use PM2 or similar for process management
+6. **Process Management**: Use PM2, Docker, or Kubernetes for process management
+7. **API Documentation**: Swagger UI is disabled in production for security
+8. **Load Balancing**: Consider multiple instances behind a load balancer for high availability
 
 ## Client Implementation Guide
 
 ### Token Management
 1. Store tokens securely (keychain/secure storage)
-2. Include API key in all requests
+2. Include bearer tokens in authorization headers
 3. Handle token refresh automatically on 401 errors
 4. Implement proper logout flow
 
@@ -424,14 +533,144 @@ Customize logging in `utils/logger.js`:
 3. Handle network connectivity issues
 4. Implement retry logic for failed requests
 
+## Email Service
+
+The application includes a comprehensive email service for sending HTML emails. The service supports:
+
+- **HTML Email Sending**: Send rich HTML emails with styling
+- **Environment Configuration**: All email settings configured via environment variables
+- **Built-in Templates**: Welcome emails and password reset emails
+- **Multiple Recipients**: Support for CC, BCC, and multiple recipients
+- **Attachments**: Support for email attachments
+- **Connection Verification**: Test email configuration before sending
+
+### Email Configuration
+
+Configure the following environment variables in your `.env` file:
+
+```env
+EMAIL_HOST=smtp.gmail.com          # SMTP server host
+EMAIL_PORT=587                     # SMTP server port
+EMAIL_SECURE=false                 # Use SSL/TLS (true for port 465)
+EMAIL_USER=your_email@gmail.com    # Email account username
+EMAIL_PASS=your_app_password       # Email account password (use app password for Gmail)
+EMAIL_FROM=TrackIt <your_email@gmail.com>  # Default sender address
+EMAIL_TLS_REJECT_UNAUTHORIZED=true # TLS certificate validation
+```
+
+### Popular Email Provider Settings
+
+**Gmail:**
+- Host: `smtp.gmail.com`
+- Port: `587`
+- Secure: `false`
+- Note: Use app passwords instead of your regular password
+
+**Outlook/Hotmail:**
+- Host: `smtp-mail.outlook.com`
+- Port: `587`
+- Secure: `false`
+
+**Yahoo:**
+- Host: `smtp.mail.yahoo.com`
+- Port: `587`
+- Secure: `false`
+
+### Usage Examples
+
+```javascript
+const emailService = require('./services/emailService');
+
+// Send simple HTML email
+await emailService.sendSimpleHtmlEmail(
+  'user@example.com',
+  'Subject',
+  '<h1>Hello!</h1><p>HTML content here</p>'
+);
+
+// Send detailed email with all options
+await emailService.sendHtmlEmail({
+  to: 'user@example.com',
+  subject: 'Subject',
+  html: '<h1>HTML content</h1>',
+  cc: ['cc@example.com'],
+  bcc: ['bcc@example.com'],
+  attachments: [/* attachment objects */]
+});
+
+// Send welcome email (built-in template)
+await emailService.sendWelcomeEmail('user@example.com', 'Username');
+
+// Send password reset email (built-in template)
+await emailService.sendPasswordResetEmail('user@example.com', 'Username', 'reset-link');
+
+// Verify email configuration
+const isValid = await emailService.verifyConnection();
+```
+
+See `examples/emailExamples.js` for complete usage examples.
+
+## Troubleshooting
+
+### Common Issues
+
+**Database Connection Issues**:
+```bash
+# Check PostgreSQL is running
+sudo systemctl status postgresql
+
+# Test connection
+psql -h localhost -U username -d database_name
+```
+
+**Environment Variables**:
+- Ensure all required variables are set in `.env`
+- Check for typos in variable names
+- Verify database URL format: `postgres://username:password@host:port/database`
+
+**Hardware Monitoring**:
+```bash
+# Install and configure sensors
+sudo apt-get install lm-sensors
+sudo sensors-detect
+
+# Test sensors
+sensors
+```
+
+**Email Service**:
+- Use app-specific passwords for Gmail
+- Check firewall settings for SMTP ports
+- Verify email credentials and server settings
+
+**Port Already in Use**:
+```bash
+# Find process using port 3000
+lsof -i :3000
+
+# Kill process if needed
+kill -9 <PID>
+```
+
 ## Contributing
 
 1. Follow existing code style and structure
-2. Add logging for new features
-3. Update API documentation for new endpoints
+2. Add logging for new features using the Winston logger
+3. Update API documentation for new endpoints (add Swagger annotations)
 4. Test database operations thoroughly
-5. Ensure proper error handling
+5. Ensure proper error handling and validation
+6. Update this README for any new features or configuration changes
 
 ## License
 
 ISC License - see package.json for details.
+
+---
+
+## Additional Resources
+
+- **GitHub Repository**: [https://github.com/apptrackit/trackit-backend](https://github.com/apptrackit/trackit-backend)
+- **API Documentation**: Available at `/api-docs` when running in development mode
+- **Issue Tracking**: Use GitHub Issues for bug reports and feature requests
+
+For questions or support, please refer to the project's GitHub repository.
