@@ -2,6 +2,66 @@ const { db } = require('../database');
 const logger = require('../utils/logger');
 
 class MetricService {
+  // Get metric entries for a user
+  async getMetricEntries(userId, options = {}) {
+    try {
+      const { metric_type_id, limit = 100, offset = 0 } = options;
+      
+      let query = `
+        SELECT id, metric_type_id, value, date, is_apple_health, created_at, updated_at
+        FROM metric_entries 
+        WHERE user_id = $1
+      `;
+      
+      const queryParams = [userId];
+      let paramIndex = 2;
+      
+      // Add metric type filter if specified
+      if (metric_type_id) {
+        query += ` AND metric_type_id = $${paramIndex++}`;
+        queryParams.push(metric_type_id);
+      }
+      
+      // Add ordering and pagination
+      query += ` ORDER BY date DESC, created_at DESC`;
+      query += ` LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
+      queryParams.push(limit, offset);
+      
+      const result = await db.query(query, queryParams);
+      
+      // Get total count for pagination
+      let countQuery = 'SELECT COUNT(*) FROM metric_entries WHERE user_id = $1';
+      const countParams = [userId];
+      
+      if (metric_type_id) {
+        countQuery += ' AND metric_type_id = $2';
+        countParams.push(metric_type_id);
+      }
+      
+      const countResult = await db.query(countQuery, countParams);
+      const total = parseInt(countResult.rows[0].count);
+      
+      return {
+        entries: result.rows,
+        total: total
+      };
+    } catch (error) {
+      logger.error('Error getting metric entries:', error);
+      throw error;
+    }
+  }
+
+  // Get available metric types
+  async getMetricTypes() {
+    try {
+      const result = await db.query('SELECT id, name, unit, description FROM metric_types ORDER BY name');
+      return result.rows;
+    } catch (error) {
+      logger.error('Error getting metric types:', error);
+      throw error;
+    }
+  }
+
   // Create a new metric entry
   async createMetricEntry(userId, metricTypeId, value, date, isAppleHealth = false) {
     try {

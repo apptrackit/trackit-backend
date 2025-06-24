@@ -92,4 +92,102 @@ router.put('/:entryId', metricController.updateMetricEntry);
  */
 router.delete('/:entryId', metricController.deleteMetricEntry);
 
-module.exports = router; 
+/**
+ * @swagger
+ * /api/metrics:
+ *   get:
+ *     summary: Get all metric entries for the authenticated user
+ *     tags: [Metrics]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: metric_type_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by specific metric type ID
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 100
+ *         description: Maximum number of entries to return
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: Number of entries to skip
+ *     responses:
+ *       200:
+ *         description: Metric entries retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 entries:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       metric_type_id:
+ *                         type: integer
+ *                       value:
+ *                         type: number
+ *                       date:
+ *                         type: string
+ *                       is_apple_health:
+ *                         type: boolean
+ *                       created_at:
+ *                         type: string
+ *                       updated_at:
+ *                         type: string
+ *                 total:
+ *                   type: integer
+ *       401:
+ *         description: Invalid authentication
+ */
+router.get('/', metricController.getMetricEntries);
+
+/**
+ * @swagger
+ * /api/metrics/types:
+ *   get:
+ *     summary: Get all available metric types
+ *     tags: [Metrics]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Metric types retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 types:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       name:
+ *                         type: string
+ *                       unit:
+ *                         type: string
+ *                       description:
+ *                         type: string
+ *       401:
+ *         description: Invalid authentication
+ */
+router.get('/types', metricController.getMetricTypes);
+
+module.exports = router;

@@ -1,6 +1,49 @@
 const metricService = require('../services/metricService');
 const logger = require('../utils/logger');
 
+// Controller function to get metric entries for a user
+exports.getMetricEntries = async (req, res) => {
+  const user_id = req.user.id;
+  const { metric_type_id, limit = 100, offset = 0 } = req.query;
+
+  logger.info(`Getting metric entries - User: ${user_id}, Type: ${metric_type_id || 'all'}, Limit: ${limit}, Offset: ${offset}`);
+
+  try {
+    const result = await metricService.getMetricEntries(user_id, {
+      metric_type_id: metric_type_id ? parseInt(metric_type_id) : null,
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+    
+    logger.info(`Retrieved ${result.entries.length} metric entries for user: ${user_id}`);
+    res.status(200).json({ 
+      success: true, 
+      entries: result.entries,
+      total: result.total
+    });
+  } catch (error) {
+    logger.error('Error getting metric entries:', error);
+    res.status(500).json({ message: 'Error retrieving metric entries', error: error.message });
+  }
+};
+
+// Controller function to get available metric types
+exports.getMetricTypes = async (req, res) => {
+  logger.info('Getting metric types');
+
+  try {
+    const types = await metricService.getMetricTypes();
+    logger.info(`Retrieved ${types.length} metric types`);
+    res.status(200).json({ 
+      success: true, 
+      types: types
+    });
+  } catch (error) {
+    logger.error('Error getting metric types:', error);
+    res.status(500).json({ message: 'Error retrieving metric types', error: error.message });
+  }
+};
+
 // Controller function to log a new metric entry
 exports.createMetricEntry = async (req, res) => {
   const { metric_type_id, value, date, is_apple_health = false } = req.body;
