@@ -3,7 +3,7 @@ const logger = require('../utils/logger');
 
 // Controller function to get metric entries for a user
 exports.getMetricEntries = async (req, res) => {
-  const user_id = req.user.id;
+  const user_id = req.user.userId;
   const { metric_type_id, limit = 100, offset = 0 } = req.query;
 
   logger.info(`Getting metric entries - User: ${user_id}, Type: ${metric_type_id || 'all'}, Limit: ${limit}, Offset: ${offset}`);
@@ -47,7 +47,7 @@ exports.getMetricTypes = async (req, res) => {
 // Controller function to log a new metric entry
 exports.createMetricEntry = async (req, res) => {
   const { metric_type_id, value, date, is_apple_health = false } = req.body;
-  const user_id = req.user.id;
+  const user_id = req.user.userId;
 
   logger.info(`Creating metric entry - User: ${user_id}, Type: ${metric_type_id}, Value: ${value}, Date: ${date}`);
 
@@ -73,7 +73,7 @@ exports.createMetricEntry = async (req, res) => {
 exports.updateMetricEntry = async (req, res) => {
   const { entryId } = req.params;
   const { value, date, is_apple_health } = req.body;
-  const user_id = req.user.id;
+  const user_id = req.user.userId;
 
   logger.info(`Updating metric entry - ID: ${entryId}, User: ${user_id}`);
 
@@ -98,7 +98,7 @@ exports.updateMetricEntry = async (req, res) => {
 // Controller function to delete a metric entry
 exports.deleteMetricEntry = async (req, res) => {
   const { entryId } = req.params;
-  const user_id = req.user.id;
+  const user_id = req.user.userId;
 
   logger.info(`Deleting metric entry - ID: ${entryId}, User: ${user_id}`);
 

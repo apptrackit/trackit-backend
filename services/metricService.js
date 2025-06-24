@@ -8,7 +8,7 @@ class MetricService {
       const { metric_type_id, limit = 100, offset = 0 } = options;
       
       let query = `
-        SELECT id, metric_type_id, value, date, is_apple_health, created_at, updated_at
+        SELECT id, metric_type_id, value, date, is_apple_health
         FROM metric_entries 
         WHERE user_id = $1
       `;
@@ -23,7 +23,7 @@ class MetricService {
       }
       
       // Add ordering and pagination
-      query += ` ORDER BY date DESC, created_at DESC`;
+      query += ` ORDER BY date DESC, id DESC`;
       query += ` LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
       queryParams.push(limit, offset);
       
@@ -54,7 +54,7 @@ class MetricService {
   // Get available metric types
   async getMetricTypes() {
     try {
-      const result = await db.query('SELECT id, name, unit, description FROM metric_types ORDER BY name');
+      const result = await db.query('SELECT id, name, unit FROM metric_types ORDER BY name');
       return result.rows;
     } catch (error) {
       logger.error('Error getting metric types:', error);
