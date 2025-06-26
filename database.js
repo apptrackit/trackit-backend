@@ -55,6 +55,20 @@ const initializeDatabase = async () => {
 
     // Create metric_types table
     await client.query(`
+      CREATE TABLE IF NOT EXISTS metric_types (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL UNIQUE,
+        unit VARCHAR(50),
+        icon_name VARCHAR(50),
+        is_default BOOLEAN DEFAULT FALSE,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        category VARCHAR(100)
+      );
+    `);
+    logger.info('Metric types table ready');
+
+    // Create metric_entries table
+    await client.query(`
       CREATE TABLE IF NOT EXISTS metric_entries (
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -64,10 +78,10 @@ const initializeDatabase = async () => {
         is_apple_health BOOLEAN DEFAULT FALSE
       );
     `);
-        logger.info('Metric entries table ready');
+    logger.info('Metric entries table ready');
 
-        // Ensure unique constraint exists
-        await client.query(`
+    // Ensure unique constraint exists
+    await client.query(`
       DO $$
       BEGIN
         IF NOT EXISTS (
@@ -116,19 +130,6 @@ const initializeDatabase = async () => {
       }
     }
     logger.info('Default metric types seeding process completed.');
-
-    // Create metric_entries table
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS metric_entries (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        metric_type_id INTEGER NOT NULL REFERENCES metric_types(id) ON DELETE CASCADE,
-        value BIGINT NOT NULL,
-        date DATE NOT NULL,
-        is_apple_health BOOLEAN DEFAULT FALSE
-      );
-    `);
-    logger.info('Metric entries table ready');
 
     client.release();
     return true;
