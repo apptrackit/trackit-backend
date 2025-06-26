@@ -83,9 +83,9 @@ exports.updateMetricEntry = async (req, res) => {
   }
 
   try {
-    await metricService.updateMetricEntry(user_id, entryId, { value, date, is_apple_health });
+    const updatedEntry = await metricService.updateMetricEntry(user_id, entryId, { value, date, is_apple_health });
     logger.info(`Metric entry updated successfully - ID: ${entryId}, User: ${user_id}`);
-    res.status(200).json({ success: true, message: 'Metric entry updated successfully' });
+    res.status(200).json({ success: true, message: 'Metric entry updated successfully', entry: updatedEntry });
   } catch (error) {
     logger.error('Error updating metric entry:', error);
     if (error.message === 'Metric entry not found or does not belong to the user') {
