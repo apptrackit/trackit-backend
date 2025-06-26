@@ -75,7 +75,7 @@ const initializeDatabase = async () => {
           id SERIAL PRIMARY KEY,
           user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
           metric_type_id INTEGER NOT NULL REFERENCES metric_types(id) ON DELETE CASCADE,
-          value BIGINT NOT NULL,
+          value DECIMAL(10, 2) NOT NULL,
           date TIMESTAMP NOT NULL,
           is_apple_health BOOLEAN DEFAULT FALSE
         );
