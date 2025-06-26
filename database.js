@@ -55,17 +55,31 @@ const initializeDatabase = async () => {
 
     // Create metric_types table
     await client.query(`
-      CREATE TABLE IF NOT EXISTS metric_types (
+      CREATE TABLE IF NOT EXISTS metric_entries (
         id SERIAL PRIMARY KEY,
-        name VARCHAR(255) NOT NULL UNIQUE,
-        unit VARCHAR(50),
-        icon_name VARCHAR(50),
-        is_default BOOLEAN DEFAULT FALSE,
-        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        category VARCHAR(100)
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        metric_type_id INTEGER NOT NULL REFERENCES metric_types(id) ON DELETE CASCADE,
+        value BIGINT NOT NULL,
+        date DATE NOT NULL,
+        is_apple_health BOOLEAN DEFAULT FALSE
       );
     `);
-    logger.info('Metric types table ready');
+        logger.info('Metric entries table ready');
+
+        // Ensure unique constraint exists
+        await client.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'unique_user_metric_date'
+        ) THEN
+          ALTER TABLE metric_entries
+          ADD CONSTRAINT unique_user_metric_date UNIQUE (user_id, metric_type_id, date);
+        END IF;
+      END
+      $$;
+    `);
+    logger.info('Unique constraint on metric_entries (user_id, metric_type_id, date) ensured');
 
     // Define non-calculated default metric types based on Swift enum
     const nonCalculatedDefaultMetricTypes = [
