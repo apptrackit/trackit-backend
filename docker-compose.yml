@@ -1,0 +1,42 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_DB: trackitdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  app:
+    build: .
+    restart: always
+    environment:
+      DB_PATH: /home/botond/trackit.db
+      HOST: 0.0.0.0
+      PORT: 3000
+      SALT: 10
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: admin
+      JWT_SECRET: your_super_secret_jwt_key_for_signing_tokens
+      DATABASE_URL: postgres://postgres:postgres@db:5432/trackitdb
+      NODE_ENV: dev
+      SWAGGER_PORT: 3001
+      PGHOST: db
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: trackitdb
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    volumes:
+      - .:/usr/src/app
+
+volumes:
+  db_data:
