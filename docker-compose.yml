@@ -1,22 +1,23 @@
 version: '3.8'
+
 services:
   db:
     image: postgres:15
     restart: always
     environment:
-      POSTGRES_DB: trackitdb
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      - POSTGRES_DB=trackitdb
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
     ports:
       - "5432:5432"
     volumes:
+      # This links the declared 'db_data' volume to the postgres data directory
       - db_data:/var/lib/postgresql/data
 
   app:
     build: .
     restart: always
     environment:
-      DB_PATH: /home/botond/trackit.db
       HOST: 0.0.0.0
       PORT: 3000
       SALT: 10
@@ -35,9 +36,13 @@ services:
       - "3000:3000"
     depends_on:
       - db
+    # This volumes section is correctly indented under 'app'
     volumes:
+      # Syncs your local project folder with the container's app folder
       - .:/usr/src/app
-
-volumes:
-      - .:/usr/src/app
+      # Prevents the local mount from overwriting the container's node_modules
       - /usr/src/app/node_modules
+
+# This top-level 'volumes' key declares the named volume used by the db service
+volumes:
+  db_data:
