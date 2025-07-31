@@ -39,4 +39,5 @@ services:
       - .:/usr/src/app
 
 volumes:
-  db_data:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
