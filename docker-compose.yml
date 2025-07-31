@@ -11,7 +11,6 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      # This links the declared 'db_data' volume to the postgres data directory
       - db_data:/var/lib/postgresql/data
 
   app:
@@ -19,7 +18,7 @@ services:
     restart: always
     environment:
       HOST: 0.0.0.0
-      PORT: 3000
+      PORT: 4000
       SALT: 10
       ADMIN_USERNAME: admin
       ADMIN_PASSWORD: admin
@@ -33,16 +32,12 @@ services:
       PGPASSWORD: postgres
       PGDATABASE: trackitdb
     ports:
-      - "3000:3000"
+      - "4000:4000"
     depends_on:
       - db
-    # This volumes section is correctly indented under 'app'
     volumes:
-      # Syncs your local project folder with the container's app folder
       - .:/usr/src/app
-      # Prevents the local mount from overwriting the container's node_modules
       - /usr/src/app/node_modules
 
-# This top-level 'volumes' key declares the named volume used by the db service
 volumes:
   db_data:
