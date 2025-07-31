@@ -2,6 +2,72 @@ const { db } = require('../database');
 const logger = require('../utils/logger');
 
 class MetricService {
+  // Get metric entries for a user
+  async getMetricEntries(userId, options = {}) {
+    try {
+      const { metric_type_id, limit = 100, offset = 0 } = options;
+      
+      let query = `
+        SELECT id, metric_type_id, value, date, is_apple_health
+        FROM metric_entries 
+        WHERE user_id = $1
+      `;
+      
+      const queryParams = [userId];
+      let paramIndex = 2;
+      
+      // Add metric type filter if specified
+      if (metric_type_id) {
+        query += ` AND metric_type_id = $${paramIndex++}`;
+        queryParams.push(metric_type_id);
+      }
+      
+      // Add ordering and pagination
+      query += ` ORDER BY date DESC, id DESC`;
+      query += ` LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
+      queryParams.push(limit, offset);
+      
+      const result = await db.query(query, queryParams);
+      
+      // Convert date to ISO 8601 UTC string for each entry
+      const entries = result.rows.map(row => ({
+        ...row,
+        date: row.date instanceof Date ? row.date.toISOString() : row.date
+      }));
+      
+      // Get total count for pagination
+      let countQuery = 'SELECT COUNT(*) FROM metric_entries WHERE user_id = $1';
+      const countParams = [userId];
+      
+      if (metric_type_id) {
+        countQuery += ' AND metric_type_id = $2';
+        countParams.push(metric_type_id);
+      }
+      
+      const countResult = await db.query(countQuery, countParams);
+      const total = parseInt(countResult.rows[0].count);
+      
+      return {
+        entries: entries,
+        total: total
+      };
+    } catch (error) {
+      logger.error('Error getting metric entries:', error);
+      throw error;
+    }
+  }
+
+  // Get available metric types
+  async getMetricTypes() {
+    try {
+      const result = await db.query('SELECT id, name, unit FROM metric_types ORDER BY name');
+      return result.rows;
+    } catch (error) {
+      logger.error('Error getting metric types:', error);
+      throw error;
+    }
+  }
+
   // Create a new metric entry
   async createMetricEntry(userId, metricTypeId, value, date, isAppleHealth = false) {
     try {
@@ -58,7 +124,19 @@ class MetricService {
         throw new Error('Metric entry not found or does not belong to the user');
       }
 
-      return { success: true };
+      // Fetch and return the updated entry with date as ISO 8601 string
+      const updated = await db.query(
+        'SELECT id, metric_type_id, value, date, is_apple_health FROM metric_entries WHERE id = $1 AND user_id = $2',
+        [entryId, userId]
+      );
+      if (updated.rows.length === 0) {
+        throw new Error('Metric entry not found after update');
+      }
+      const row = updated.rows[0];
+      return {
+        ...row,
+        date: row.date instanceof Date ? row.date.toISOString() : row.date
+      };
     } catch (error) {
       logger.error('Error updating metric entry:', error);
       throw error;
