@@ -5,9 +5,9 @@ services:
     image: postgres:15
     restart: always
     environment:
-      - POSTGRES_DB=trackitdb
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
@@ -16,23 +16,14 @@ services:
   app:
     build: .
     restart: always
+    env_file:
+      - .env
     environment:
-      HOST: 0.0.0.0
-      PORT: 4000
-      SALT: 10
-      ADMIN_USERNAME: admin
-      ADMIN_PASSWORD: admin
-      JWT_SECRET: your_super_secret_jwt_key_for_signing_tokens
-      DATABASE_URL: postgres://postgres:postgres@db:5432/trackitdb
-      NODE_ENV: dev
-      SWAGGER_PORT: 3001
-      PGHOST: db
-      PGPORT: 5432
-      PGUSER: postgres
-      PGPASSWORD: postgres
-      PGDATABASE: trackitdb
+      - PORT=${PORT}
+
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
     ports:
-      - "4000:4000"
+      - "${PORT}:${PORT}"
     depends_on:
       - db
     volumes:
