@@ -40,11 +40,15 @@ const adminRoutes = require('./routes/admin');
 const metricsRoutes = require('./routes/metrics');
 const { initializeDatabase } = require('./database');
 
+// Import images route
+const imagesRouter = require('./routes/images');
+
 // Use routes
 app.use('/auth', authRoutes);
 app.use('/user', userRoutes);
 app.use('/admin', adminRoutes);
 app.use('/api/metrics', metricsRoutes);
+app.use('/api/images', imagesRouter);
 
 // Start server only after database is initialized
 initializeDatabase()
