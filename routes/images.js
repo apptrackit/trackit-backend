@@ -1,19 +1,22 @@
 const express = require('express');
 const router = express.Router();
 const imageController = require('../controllers/imageController');
+const { validateToken } = require('../auth');
 const multer = require('multer');
 const upload = multer();
 
-// Middleware: assumes req.user is set by authentication middleware
+// Protect these routes with authentication
+router.use(validateToken);
 
 
 /**
  * @swagger
- * /images:
+ * /api/images:
  *   post:
  *     summary: Upload a new image
- *     tags:
- *       - Images
+ *     tags: [Images]
+ *     security:
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -34,6 +37,8 @@ const upload = multer();
  *         description: Image uploaded successfully
  *       400:
  *         description: Missing imageTypeId or file data
+ *       401:
+ *         description: Invalid authentication
  *       500:
  *         description: Server error
  */
@@ -41,11 +46,12 @@ router.post('/', upload.single('file'), imageController.addImage);
 
 /**
  * @swagger
- * /images/{id}:
+ * /api/images/{id}:
  *   delete:
  *     summary: Soft delete an image
- *     tags:
- *       - Images
+ *     tags: [Images]
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -56,6 +62,8 @@ router.post('/', upload.single('file'), imageController.addImage);
  *     responses:
  *       200:
  *         description: Image deleted successfully
+ *       401:
+ *         description: Invalid authentication
  *       404:
  *         description: Image not found or already deleted
  *       500:

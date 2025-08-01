@@ -48,7 +48,7 @@ app.use('/auth', authRoutes);
 app.use('/user', userRoutes);
 app.use('/admin', adminRoutes);
 app.use('/api/metrics', metricsRoutes);
-app.use('/images', imagesRouter);
+app.use('/api/images', imagesRouter);
 
 // Start server only after database is initialized
 initializeDatabase()
