@@ -12,6 +12,37 @@ router.use(validateToken);
 /**
  * @swagger
  * /api/images:
+ *   get:
+ *     summary: Get user images
+ *     tags: [Images]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 100
+ *         description: Maximum number of images to return
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: Number of images to skip
+ *     responses:
+ *       200:
+ *         description: Images retrieved successfully
+ *       401:
+ *         description: Invalid authentication
+ *       500:
+ *         description: Server error
+ */
+router.get('/', imageController.getImages);
+
+/**
+ * @swagger
+ * /api/images:
  *   post:
  *     summary: Upload a new image
  *     tags: [Images]

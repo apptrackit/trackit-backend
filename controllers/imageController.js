@@ -1,5 +1,35 @@
 const imageService = require('../services/imageService');
 
+// Get user images (expects req.user.userId)
+const getImages = async (req, res) => {
+  const logger = require('../utils/logger');
+  try {
+    const userId = req.user.userId;
+    const { limit = 100, offset = 0 } = req.query;
+    
+    logger.info(`Get images request - User: ${userId}, Limit: ${limit}, Offset: ${offset}`);
+    
+    const result = await imageService.getUserImages(userId, {
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+    
+    logger.info(`Retrieved ${result.images.length} images for user: ${userId}`);
+    res.status(200).json({
+      success: true,
+      images: result.images,
+      total: result.total
+    });
+  } catch (err) {
+    logger.error('Error getting images', { 
+      error: err.message, 
+      stack: err.stack,
+      userId: req.user?.userId
+    });
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // Add image (expects req.body: { imageTypeId }, req.file.buffer, req.user.id)
 const addImage = async (req, res) => {
   const logger = require('../utils/logger');
@@ -69,6 +99,7 @@ const deleteImage = async (req, res) => {
 };
 
 module.exports = {
+  getImages,
   addImage,
   deleteImage,
 };
