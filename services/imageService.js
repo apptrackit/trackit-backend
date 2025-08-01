@@ -4,12 +4,17 @@ const getUserImages = async (userId, { limit = 100, offset = 0 }) => {
   const logger = require('../utils/logger');
   logger.info(`Getting images for user: ${userId}, limit: ${limit}, offset: ${offset}`);
   
-  // Get images without the actual data (just metadata)
+  // Get images metadata (without the actual data)
   const result = await db.query(
-    `SELECT id, user_id, image_type_id, created_at, updated_at 
-     FROM images 
-     WHERE user_id = $1 AND deleted = FALSE 
-     ORDER BY created_at DESC 
+    `SELECT i.id, i.image_type_id, i.uploaded_at, 
+            LENGTH(i.data) as file_size,
+            CASE 
+              WHEN LENGTH(i.data) > 0 THEN 'image/jpeg'
+              ELSE 'application/octet-stream'
+            END as mime_type
+     FROM images i
+     WHERE i.user_id = $1 AND i.deleted = FALSE 
+     ORDER BY i.uploaded_at DESC 
      LIMIT $2 OFFSET $3`,
     [userId, limit, offset]
   );
@@ -24,11 +29,12 @@ const getUserImages = async (userId, { limit = 100, offset = 0 }) => {
   
   return {
     images: result.rows.map(row => ({
-      id: row.id,
-      user_id: row.user_id,
+      id: row.id.toString(),
       image_type_id: row.image_type_id,
-      created_at: row.created_at,
-      updated_at: row.updated_at
+      filename: `image_${row.id}.jpg`, // Generate a filename
+      date: row.uploaded_at.toISOString(),
+      file_size: parseInt(row.file_size),
+      mime_type: row.mime_type
     })),
     total: parseInt(countResult.rows[0].total)
   };
