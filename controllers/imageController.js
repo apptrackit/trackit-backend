@@ -98,8 +98,45 @@ const deleteImage = async (req, res) => {
   }
 };
 
+// Download image file (expects req.params.id, req.user.userId)
+const downloadImage = async (req, res) => {
+  const logger = require('../utils/logger');
+  try {
+    const imageId = req.params.id;
+    const userId = req.user.userId;
+    
+    logger.info(`Image download request - User: ${userId}, ImageId: ${imageId}`);
+    
+    const imageData = await imageService.getImageData(imageId, userId);
+    if (!imageData) {
+      logger.warn(`Image download failed - not found - User: ${userId}, ImageId: ${imageId}`);
+      return res.status(404).json({ error: 'Image not found' });
+    }
+    
+    logger.info(`Image download successful - User: ${userId}, ImageId: ${imageId}, Size: ${imageData.data.length} bytes`);
+    
+    // Set appropriate headers
+    res.set({
+      'Content-Type': 'image/jpeg',
+      'Content-Length': imageData.data.length,
+      'Content-Disposition': `attachment; filename="image_${imageId}.jpg"`
+    });
+    
+    res.send(imageData.data);
+  } catch (err) {
+    logger.error('Error downloading image', { 
+      error: err.message, 
+      stack: err.stack,
+      userId: req.user?.userId,
+      imageId: req.params?.id
+    });
+    res.status(500).json({ error: err.message });
+  }
+};
+
 module.exports = {
   getImages,
   addImage,
   deleteImage,
+  downloadImage,
 };

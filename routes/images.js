@@ -42,6 +42,38 @@ router.get('/', imageController.getImages);
 
 /**
  * @swagger
+ * /api/images/{id}/download:
+ *   get:
+ *     summary: Download image file
+ *     tags: [Images]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: Image ID
+ *     responses:
+ *       200:
+ *         description: Image file
+ *         content:
+ *           image/jpeg:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       401:
+ *         description: Invalid authentication
+ *       404:
+ *         description: Image not found
+ *       500:
+ *         description: Server error
+ */
+router.get('/:id/download', imageController.downloadImage);
+
+/**
+ * @swagger
  * /api/images:
  *   post:
  *     summary: Upload a new image

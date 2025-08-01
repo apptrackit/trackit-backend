@@ -59,8 +59,34 @@ const softDeleteImage = async (imageId, userId) => {
   return result.rows[0];
 };
 
+const getImageData = async (imageId, userId) => {
+  const logger = require('../utils/logger');
+  logger.info(`Getting image data for image: ${imageId}, user: ${userId}`);
+  
+  try {
+    const result = await db.query(
+      `SELECT data FROM images WHERE id = $1 AND user_id = $2 AND deleted = FALSE`,
+      [imageId, userId]
+    );
+    
+    if (result.rows.length === 0) {
+      logger.warn(`Image not found - ID: ${imageId}, User: ${userId}`);
+      return null;
+    }
+    
+    logger.info(`Image data retrieved - ID: ${imageId}, Size: ${result.rows[0].data.length} bytes`);
+    return {
+      data: result.rows[0].data
+    };
+  } catch (error) {
+    logger.error(`Error getting image data for image ${imageId}:`, error);
+    throw error;
+  }
+};
+
 module.exports = {
   getUserImages,
   addImage,
   softDeleteImage,
+  getImageData,
 };
