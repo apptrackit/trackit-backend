@@ -566,4 +566,152 @@ router.post('/check', (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /admin/images:
+ *   get:
+ *     summary: Get all images (admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - AdminBearerAuth: []
+ *     responses:
+ *       200:
+ *         description: All images retrieved successfully
+ *       401:
+ *         description: Invalid token
+ */
+router.get('/images', validateAdminToken, (req, res) => {
+  logger.info(`Admin getAllImages request from ${req.adminUser.username} at ${req.ip}`);
+  adminController.getAllImages(req, res);
+});
+
+/**
+ * @swagger
+ * /admin/image/{id}:
+ *   get:
+ *     summary: Get image data (admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - AdminBearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: Image ID
+ *     responses:
+ *       200:
+ *         description: Image data retrieved successfully
+ *         content:
+ *           image/jpeg:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       401:
+ *         description: Invalid token
+ *       404:
+ *         description: Image not found
+ */
+router.get('/image/:id', validateAdminToken, (req, res) => {
+  logger.info(`Admin getImageData request from ${req.adminUser.username} at ${req.ip} for image: ${req.params.id}`);
+  adminController.getImageData(req, res);
+});
+
+/**
+ * @swagger
+ * /admin/soft-delete-image:
+ *   post:
+ *     summary: Soft delete an image (admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - AdminBearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - id
+ *             properties:
+ *               id:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Image soft deleted successfully
+ *       401:
+ *         description: Invalid token
+ *       404:
+ *         description: Image not found or already deleted
+ */
+router.post('/soft-delete-image', validateAdminToken, (req, res) => {
+  logger.info(`Admin softDeleteImage request from ${req.adminUser.username} at ${req.ip} for image: ${req.body.id}`);
+  adminController.softDeleteImage(req, res);
+});
+
+/**
+ * @swagger
+ * /admin/permanent-delete-image:
+ *   post:
+ *     summary: Permanently delete an image (admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - AdminBearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - id
+ *             properties:
+ *               id:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Image permanently deleted successfully
+ *       401:
+ *         description: Invalid token
+ *       404:
+ *         description: Image not found
+ */
+router.post('/permanent-delete-image', validateAdminToken, (req, res) => {
+  logger.info(`Admin permanentDeleteImage request from ${req.adminUser.username} at ${req.ip} for image: ${req.body.id}`);
+  adminController.permanentDeleteImage(req, res);
+});
+
+/**
+ * @swagger
+ * /admin/restore-image:
+ *   post:
+ *     summary: Restore a soft-deleted image (admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - AdminBearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - id
+ *             properties:
+ *               id:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Image restored successfully
+ *       401:
+ *         description: Invalid token
+ *       404:
+ *         description: Image not found or not deleted
+ */
+router.post('/restore-image', validateAdminToken, (req, res) => {
+  logger.info(`Admin restoreImage request from ${req.adminUser.username} at ${req.ip} for image: ${req.body.id}`);
+  adminController.restoreImage(req, res);
+});
+
 module.exports = router;

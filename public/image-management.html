@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Management - TrackIt Admin</title>
+    <link rel="stylesheet" href="css/admin-dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        
+        .images-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .image-card {
+            background-color: #2d3748;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .image-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .image-card.deleted {
+            opacity: 0.7;
+            border: 2px solid #fc8181;
+        }
+
+        .image-preview {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .image-preview:hover {
+            transform: scale(1.02);
+        }
+
+        .image-info {
+            margin-bottom: 1rem;
+        }
+
+        .image-info h3 {
+            color: #e2e8f0;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .image-info p {
+            color: #a0aec0;
+            margin: 0.25rem 0;
+            font-size: 0.875rem;
+        }
+
+        .image-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .image-actions .action-btn {
+            font-size: 0.75rem;
+            padding: 0.4rem 0.8rem;
+        }
+
+        .btn-view {
+            background-color: rgba(99, 179, 237, 0.1);
+            color: #63b3ed;
+        }
+
+        .btn-view:hover {
+            background-color: rgba(99, 179, 237, 0.2);
+        }
+
+        .btn-soft-delete {
+            background-color: rgba(251, 146, 60, 0.1);
+            color: #fb923c;
+        }
+
+        .btn-soft-delete:hover {
+            background-color: rgba(251, 146, 60, 0.2);
+        }
+
+        .btn-restore {
+            background-color: rgba(104, 211, 145, 0.1);
+            color: #68d391;
+        }
+
+        .btn-restore:hover {
+            background-color: rgba(104, 211, 145, 0.2);
+        }
+
+        .btn-permanent-delete {
+            background-color: rgba(252, 129, 129, 0.1);
+            color: #fc8181;
+        }
+
+        .btn-permanent-delete:hover {
+            background-color: rgba(252, 129, 129, 0.2);
+        }
+
+        .filters-section {
+            background-color: #2d3748;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .filter-group label {
+            color: #a0aec0;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .filter-group select,
+        .filter-group input {
+            padding: 0.5rem;
+            border: 1px solid #4a5568;
+            border-radius: 4px;
+            background-color: #1a202c;
+            color: #e2e8f0;
+            font-size: 0.875rem;
+        }
+
+        .filter-group select:focus,
+        .filter-group input:focus {
+            outline: none;
+            border-color: #4299e1;
+        }
+
+        .modal-content-image {
+            background-color: #2d3748;
+            border-radius: 8px;
+            max-width: 95vw;
+            max-height: 95vh;
+        }
+
+        .modal-image {
+            max-width: 100%;
+            max-height: 70vh;
+            object-fit: contain;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+        }
+
+        .modal-info {
+            color: #e2e8f0;
+        }
+
+        .modal-info h3 {
+            color: #e2e8f0;
+            margin-bottom: 1rem;
+        }
+
+        .modal-info p {
+            color: #a0aec0;
+            margin: 0.5rem 0;
+        }
+
+        .back-button {
+            margin-bottom: 1rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #a0aec0;
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: #4a5568;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <div class="header-left">
+                <h1><i class="fas fa-images"></i> Image Management</h1>
+                <div id="environment-indicator" class="environment-indicator">
+                    <span id="environment-text">Loading...</span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button id="back-to-dashboard" class="secondary-btn">
+                    <i class="fas fa-arrow-left"></i>
+                    Back to Dashboard
+                </button>
+                <button id="refresh-btn" class="primary-btn">
+                    <i class="fas fa-sync-alt"></i>
+                    Refresh
+                </button>
+            </div>
+        </header>
+
+        <div class="dashboard-content">
+            <div class="stats-section">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-images"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>Total Images</h3>
+                        <p id="totalImages">0</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-eye"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>Active Images</h3>
+                        <p id="activeImages">0</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-trash"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>Deleted Images</h3>
+                        <p id="deletedImages">0</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>Total Size</h3>
+                        <p id="totalSize">0 MB</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="filters-section">
+                <div class="filters-grid">
+                    <div class="filter-group">
+                        <label for="statusFilter">Status:</label>
+                        <select id="statusFilter">
+                            <option value="all">All Images</option>
+                            <option value="active">Active Only</option>
+                            <option value="deleted">Deleted Only</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="typeFilter">Type:</label>
+                        <select id="typeFilter">
+                            <option value="all">All Types</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="userFilter">User:</label>
+                        <input type="text" id="userFilter" placeholder="Search by username...">
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-section">
+                <div id="loading" class="loading" style="display: none;">Loading images...</div>
+                <div id="error" class="notification error" style="display: none;"></div>
+                
+                <div id="imagesGrid" class="images-grid"></div>
+                
+                <div id="emptyState" class="empty-state" style="display: none;">
+                    <i class="fas fa-images"></i>
+                    <h3>No images found</h3>
+                    <p>No images match your current filters.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Modal -->
+    <div id="imageModal" class="modal">
+        <div class="modal-content modal-content-image">
+            <div class="modal-header">
+                <h2>Image Details</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <img id="modalImage" class="modal-image" src="" alt="Full size image">
+                <div id="modalInfo" class="modal-info"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="notification"></div>
+
+    <script>
+        let allImages = [];
+        let bearerToken = localStorage.getItem('adminBearerToken');
+
+        // Check authentication
+        if (!bearerToken) {
+            window.location.href = '/admin-dashboard.html';
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            loadImages();
+            setupEventListeners();
+            fetchEnvironmentInfo();
+        });
+
+        function setupEventListeners() {
+            // Navigation
+            document.getElementById('back-to-dashboard').addEventListener('click', () => {
+                window.location.href = '/admin-dashboard.html';
+            });
+
+            document.getElementById('refresh-btn').addEventListener('click', refreshImages);
+
+            // Filters
+            document.getElementById('statusFilter').addEventListener('change', filterImages);
+            document.getElementById('typeFilter').addEventListener('change', filterImages);
+            document.getElementById('userFilter').addEventListener('input', filterImages);
+
+            // Modal
+            const modal = document.getElementById('imageModal');
+            const closeBtn = document.querySelector('.close-modal');
+            
+            closeBtn.onclick = function() {
+                modal.style.display = 'none';
+            }
+            
+            window.onclick = function(event) {
+                if (event.target == modal) {
+                    modal.style.display = 'none';
+                }
+            }
+        }
+
+        async function fetchEnvironmentInfo() {
+            try {
+                const response = await fetch('/admin/environment', {
+                    headers: {
+                        'Authorization': `Bearer ${bearerToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const indicator = document.getElementById('environment-indicator');
+                    const text = document.getElementById('environment-text');
+                    
+                    text.textContent = data.environment;
+                    indicator.className = `environment-indicator ${data.environment}`;
+                } else {
+                    console.warn('Failed to fetch environment info');
+                }
+            } catch (error) {
+                console.error('Error fetching environment info:', error);
+            }
+        }
+
+        async function loadImages() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('emptyState').style.display = 'none';
+            
+            try {
+                const response = await fetch('/admin/images', {
+                    headers: {
+                        'Authorization': `Bearer ${bearerToken}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load images');
+                }
+
+                const data = await response.json();
+                allImages = data.images;
+                
+                updateStats();
+                populateTypeFilter();
+                displayImages(allImages);
+                
+            } catch (error) {
+                showNotification('Failed to load images: ' + error.message, 'error');
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        function updateStats() {
+            const total = allImages.length;
+            const active = allImages.filter(img => !img.deleted).length;
+            const deleted = allImages.filter(img => img.deleted).length;
+            const totalSize = allImages.reduce((sum, img) => sum + parseInt(img.image_size_bytes || 0), 0);
+
+            document.getElementById('totalImages').textContent = total;
+            document.getElementById('activeImages').textContent = active;
+            document.getElementById('deletedImages').textContent = deleted;
+            document.getElementById('totalSize').textContent = (totalSize / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+
+        function populateTypeFilter() {
+            const types = [...new Set(allImages.map(img => img.image_type_name))];
+            const typeFilter = document.getElementById('typeFilter');
+            
+            // Clear existing options except "All Types"
+            while (typeFilter.children.length > 1) {
+                typeFilter.removeChild(typeFilter.lastChild);
+            }
+            
+            types.forEach(type => {
+                const option = document.createElement('option');
+                option.value = type;
+                option.textContent = type;
+                typeFilter.appendChild(option);
+            });
+        }
+
+        function displayImages(images) {
+            const grid = document.getElementById('imagesGrid');
+            const emptyState = document.getElementById('emptyState');
+            
+            grid.innerHTML = '';
+
+            if (images.length === 0) {
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            images.forEach(image => {
+                const card = createImageCard(image);
+                grid.appendChild(card);
+            });
+        }
+
+        function createImageCard(image) {
+            const card = document.createElement('div');
+            card.className = `image-card ${image.deleted ? 'deleted' : ''}`;
+            
+            const uploadDate = new Date(image.uploaded_at).toLocaleDateString();
+            const deletedDate = image.deleted_at ? new Date(image.deleted_at).toLocaleDateString() : null;
+            
+            card.innerHTML = `
+                <img class="image-preview" src="/admin/image/${image.id}" alt="Image ${image.id}" onclick="openModal(${image.id})">
+                <div class="image-info">
+                    <h3>${image.image_type_name}</h3>
+                    <p><strong>ID:</strong> ${image.id}</p>
+                    <p><strong>User:</strong> ${image.username} (ID: ${image.user_id})</p>
+                    <p><strong>Uploaded:</strong> ${uploadDate}</p>
+                    <p><strong>Size:</strong> ${(image.image_size_bytes / 1024).toFixed(1)} KB</p>
+                    ${image.deleted ? `<p style="color: #fc8181;"><strong>Deleted:</strong> ${deletedDate}</p>` : ''}
+                </div>
+                <div class="image-actions">
+                    <button class="action-btn btn-view" onclick="openModal(${image.id})">
+                        <i class="fas fa-eye"></i> View
+                    </button>
+                    ${!image.deleted ? 
+                        `<button class="action-btn btn-soft-delete" onclick="softDeleteImage(${image.id})">
+                            <i class="fas fa-trash"></i> Soft Delete
+                        </button>` :
+                        `<button class="action-btn btn-restore" onclick="restoreImage(${image.id})">
+                            <i class="fas fa-undo"></i> Restore
+                        </button>`
+                    }
+                    <button class="action-btn btn-permanent-delete" onclick="permanentDeleteImage(${image.id})">
+                        <i class="fas fa-times"></i> Permanent Delete
+                    </button>
+                </div>
+            `;
+            
+            return card;
+        }
+
+        function filterImages() {
+            const statusFilter = document.getElementById('statusFilter').value;
+            const typeFilter = document.getElementById('typeFilter').value;
+            const userFilter = document.getElementById('userFilter').value.toLowerCase();
+
+            let filtered = allImages;
+
+            // Status filter
+            if (statusFilter === 'active') {
+                filtered = filtered.filter(img => !img.deleted);
+            } else if (statusFilter === 'deleted') {
+                filtered = filtered.filter(img => img.deleted);
+            }
+
+            // Type filter
+            if (typeFilter !== 'all') {
+                filtered = filtered.filter(img => img.image_type_name === typeFilter);
+            }
+
+            // User filter
+            if (userFilter) {
+                filtered = filtered.filter(img => img.username.toLowerCase().includes(userFilter));
+            }
+
+            displayImages(filtered);
+        }
+
+        function openModal(imageId) {
+            const image = allImages.find(img => img.id === imageId);
+            if (!image) return;
+
+            const modal = document.getElementById('imageModal');
+            const modalImage = document.getElementById('modalImage');
+            const modalInfo = document.getElementById('modalInfo');
+
+            modalImage.src = `/admin/image/${imageId}`;
+            
+            const uploadDate = new Date(image.uploaded_at).toLocaleString();
+            const deletedDate = image.deleted_at ? new Date(image.deleted_at).toLocaleString() : null;
+            
+            modalInfo.innerHTML = `
+                <h3>Image Details</h3>
+                <p><strong>ID:</strong> ${image.id}</p>
+                <p><strong>Type:</strong> ${image.image_type_name}</p>
+                <p><strong>User:</strong> ${image.username} (ID: ${image.user_id})</p>
+                <p><strong>Uploaded:</strong> ${uploadDate}</p>
+                <p><strong>Size:</strong> ${(image.image_size_bytes / 1024).toFixed(1)} KB</p>
+                <p><strong>Status:</strong> ${image.deleted ? '<span style="color: #fc8181;">❌ Deleted</span>' : '<span style="color: #68d391;">✅ Active</span>'}</p>
+                ${image.deleted ? `<p><strong>Deleted At:</strong> ${deletedDate}</p>` : ''}
+            `;
+
+            modal.style.display = 'block';
+        }
+
+        async function softDeleteImage(imageId) {
+            if (!confirm('Are you sure you want to soft delete this image?')) return;
+
+            try {
+                const response = await fetch('/admin/soft-delete-image', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${bearerToken}`
+                    },
+                    body: JSON.stringify({ id: imageId })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to soft delete image');
+                }
+
+                showNotification('Image soft deleted successfully', 'success');
+                refreshImages();
+            } catch (error) {
+                showNotification('Failed to soft delete image: ' + error.message, 'error');
+            }
+        }
+
+        async function restoreImage(imageId) {
+            if (!confirm('Are you sure you want to restore this image?')) return;
+
+            try {
+                const response = await fetch('/admin/restore-image', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${bearerToken}`
+                    },
+                    body: JSON.stringify({ id: imageId })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to restore image');
+                }
+
+                showNotification('Image restored successfully', 'success');
+                refreshImages();
+            } catch (error) {
+                showNotification('Failed to restore image: ' + error.message, 'error');
+            }
+        }
+
+        async function permanentDeleteImage(imageId) {
+            if (!confirm('⚠️ PERMANENT DELETE ⚠️\n\nThis action cannot be undone. Are you absolutely sure you want to permanently delete this image?')) return;
+
+            try {
+                const response = await fetch('/admin/permanent-delete-image', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${bearerToken}`
+                    },
+                    body: JSON.stringify({ id: imageId })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to permanently delete image');
+                }
+
+                showNotification('Image permanently deleted', 'success');
+                refreshImages();
+            } catch (error) {
+                showNotification('Failed to permanently delete image: ' + error.message, 'error');
+            }
+        }
+
+        function refreshImages() {
+            loadImages();
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.style.display = 'block';
+            
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, type === 'error' ? 5000 : 3000);
+        }
+    </script>
+</body>
+</html>
