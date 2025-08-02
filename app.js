@@ -7,7 +7,8 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerSpecs = require('./utils/swagger');
 
 // Middleware
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // Increase JSON payload limit for large requests
+app.use(express.urlencoded({ limit: '10mb', extended: true })); // Handle URL-encoded data up to 10MB
 
 // Conditionally enable Swagger UI
 const nodeEnv = process.env.NODE_ENV;
@@ -69,12 +70,18 @@ initializeDatabase()
 
     logger.info('Admin token cleanup job started - running every hour');
 
-    app.listen(process.env.PORT, process.env.HOST, () => {
+    // Configure server timeouts for large file uploads
+    const server = app.listen(process.env.PORT, process.env.HOST, () => {
       logger.info(`Server running on http://${process.env.HOST}:${process.env.PORT}`);
       if (isDevelopment) {
         logger.info(`Swagger UI available at http://${process.env.HOST}:${process.env.PORT}/api-docs`);
       }
     });
+    
+    // Set timeouts for large file uploads (5 minutes)
+    server.timeout = 5 * 60 * 1000; // 5 minutes
+    server.keepAliveTimeout = 65000; // 65 seconds
+    server.headersTimeout = 66000; // 66 seconds
   })
   .catch((error) => {
     logger.error('Failed to initialize database, server not started:', error.message);

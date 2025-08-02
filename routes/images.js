@@ -5,7 +5,19 @@ const { validateToken } = require('../auth');
 const multer = require('multer');
 const upload = multer({
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB in bytes
+    fileSize: 10 * 1024 * 1024, // 10MB in bytes
+    files: 1, // Maximum number of files
+    fields: 10, // Maximum number of non-file fields
+    fieldNameSize: 50, // Maximum field name size
+    fieldSize: 1024 * 1024 // Maximum field value size (1MB for non-file fields)
+  },
+  fileFilter: (req, file, cb) => {
+    // Accept image files only
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only image files are allowed.'), false);
+    }
   }
 });
 
@@ -16,15 +28,36 @@ const handleMulterError = (error, req, res, next) => {
       return res.status(400).json({
         success: false,
         error: 'File size too large. Maximum allowed size is 10MB.',
-        code: 'FILE_TOO_LARGE'
+        code: 'FILE_TOO_LARGE',
+        showToast: true
+      });
+    }
+    if (error.code === 'LIMIT_FILE_COUNT') {
+      return res.status(400).json({
+        success: false,
+        error: 'Too many files. Only one file allowed per upload.',
+        code: 'TOO_MANY_FILES',
+        showToast: true
       });
     }
     return res.status(400).json({
       success: false,
       error: 'File upload error: ' + error.message,
-      code: error.code
+      code: error.code,
+      showToast: true
     });
   }
+  
+  // Handle file type errors
+  if (error.message === 'Invalid file type. Only image files are allowed.') {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid file type. Only image files are allowed.',
+      code: 'INVALID_FILE_TYPE',
+      showToast: true
+    });
+  }
+  
   next(error);
 };
 

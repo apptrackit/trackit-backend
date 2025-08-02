@@ -26,7 +26,11 @@ const getImages = async (req, res) => {
       stack: err.stack,
       userId: req.user?.userId
     });
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ 
+      success: false,
+      error: err.message,
+      showToast: true
+    });
   }
 };
 
@@ -41,7 +45,11 @@ const addImage = async (req, res) => {
     
     if (!userId) {
       logger.error('No userId found on request - authentication failed');
-      return res.status(401).json({ error: 'User not logged in' });
+      return res.status(401).json({ 
+        success: false,
+        error: 'User not logged in',
+        showToast: true
+      });
     }
 
     const data = req.file ? req.file.buffer : null;
@@ -51,14 +59,35 @@ const addImage = async (req, res) => {
         hasFileData: !!data,
         fileSize: data ? data.length : 0
       });
-      return res.status(400).json({ error: 'Missing imageTypeId or file data' });
+      return res.status(400).json({ 
+        success: false,
+        error: 'Missing imageTypeId or file data',
+        showToast: true
+      });
+    }
+
+    // Additional file size check (10MB = 10 * 1024 * 1024 bytes)
+    const maxFileSize = 10 * 1024 * 1024;
+    if (data.length > maxFileSize) {
+      logger.warn(`Image upload failed - File too large: ${data.length} bytes for user: ${userId}`);
+      return res.status(400).json({
+        success: false,
+        error: 'File size too large. Maximum allowed size is 10MB.',
+        code: 'FILE_TOO_LARGE',
+        showToast: true
+      });
     }
 
     logger.info(`Processing image upload - User: ${userId}, Type: ${imageTypeId}, Size: ${data.length} bytes`);
     const image = await imageService.addImage({ userId, imageTypeId, data });
     
     logger.info(`Image upload successful - User: ${userId}, ImageId: ${image.id}`);
-    res.status(201).json(image);
+    res.status(201).json({
+      success: true,
+      ...image,
+      message: 'Image uploaded successfully',
+      showToast: true
+    });
   } catch (err) {
     logger.error('Error uploading image', { 
       error: err.message, 
@@ -66,7 +95,11 @@ const addImage = async (req, res) => {
       userId: req.user?.userId,
       imageTypeId: req.body?.imageTypeId
     });
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ 
+      success: false,
+      error: err.message,
+      showToast: true
+    });
   }
 };
 
@@ -82,11 +115,19 @@ const deleteImage = async (req, res) => {
     const deleted = await imageService.softDeleteImage(imageId, userId);
     if (!deleted) {
       logger.warn(`Image delete failed - not found or already deleted - User: ${userId}, ImageId: ${imageId}`);
-      return res.status(404).json({ error: 'Image not found or already deleted' });
+      return res.status(404).json({ 
+        success: false,
+        error: 'Image not found or already deleted',
+        showToast: true
+      });
     }
     
     logger.info(`Image delete successful - User: ${userId}, ImageId: ${imageId}`);
-    res.json({ success: true });
+    res.json({ 
+      success: true,
+      message: 'Image deleted successfully',
+      showToast: true
+    });
   } catch (err) {
     logger.error('Error deleting image', { 
       error: err.message, 
@@ -94,7 +135,11 @@ const deleteImage = async (req, res) => {
       userId: req.user?.userId,
       imageId: req.params?.id
     });
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ 
+      success: false,
+      error: err.message,
+      showToast: true
+    });
   }
 };
 
@@ -110,7 +155,11 @@ const downloadImage = async (req, res) => {
     const imageData = await imageService.getImageData(imageId, userId);
     if (!imageData) {
       logger.warn(`Image download failed - not found - User: ${userId}, ImageId: ${imageId}`);
-      return res.status(404).json({ error: 'Image not found' });
+      return res.status(404).json({ 
+        success: false,
+        error: 'Image not found',
+        showToast: true
+      });
     }
     
     logger.info(`Image download successful - User: ${userId}, ImageId: ${imageId}, Size: ${imageData.data.length} bytes`);
@@ -130,7 +179,11 @@ const downloadImage = async (req, res) => {
       userId: req.user?.userId,
       imageId: req.params?.id
     });
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ 
+      success: false,
+      error: err.message,
+      showToast: true
+    });
   }
 };
 
