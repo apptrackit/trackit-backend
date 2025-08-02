@@ -377,8 +377,14 @@ exports.getImageData = async (req, res) => {
     
     const image = result.rows[0];
     
-    // Set appropriate content type (assuming JPEG for now, could be enhanced)
-    res.set('Content-Type', 'image/jpeg');
+    // Set appropriate content type and headers for image display
+    res.set({
+      'Content-Type': 'image/jpeg',
+      'Content-Length': image.data.length,
+      'Cache-Control': 'private, max-age=3600',
+      'Content-Disposition': `inline; filename="image_${image.id}_${image.image_type_name}.jpg"`
+    });
+    
     res.send(image.data);
   } catch (error) {
     logger.error(`Error getting image data for ID ${id}:`, error);

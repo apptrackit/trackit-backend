@@ -478,7 +478,10 @@
                 </div>
                 <div class="image-actions">
                     <button class="action-btn btn-view" onclick="openModal(${image.id})">
-                        <i class="fas fa-eye"></i> View
+                        <i class="fas fa-eye"></i> Details
+                    </button>
+                    <button class="action-btn btn-view" onclick="viewImage(${image.id})" title="Open image in new tab">
+                        <i class="fas fa-external-link-alt"></i> View Image
                     </button>
                     ${!image.deleted ? 
                         `<button class="action-btn btn-soft-delete" onclick="softDeleteImage(${image.id})">
@@ -549,6 +552,12 @@
             `;
 
             modal.style.display = 'block';
+        }
+
+        function viewImage(imageId) {
+            // Open the image in a new tab/window
+            const imageUrl = `/admin/image/${imageId}?token=${encodeURIComponent(bearerToken)}`;
+            window.open(imageUrl, '_blank');
         }
 
         async function softDeleteImage(imageId) {

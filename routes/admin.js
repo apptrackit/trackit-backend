@@ -6,6 +6,54 @@ const crypto = require('crypto');
 const { db } = require('../database');
 const logger = require('../utils/logger');
 
+// Middleware for validating admin token from header or URL parameter
+const validateAdminTokenFlexible = async (req, res, next) => {
+  let token = null;
+  
+  // Try to get token from Authorization header first
+  const authHeader = req.headers['authorization'];
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1];
+  }
+  
+  // If no token in header, try URL parameter
+  if (!token && req.query.token) {
+    token = req.query.token;
+  }
+  
+  if (!token) {
+    logger.warn(`Admin token missing in request from ${req.ip}`);
+    return res.status(401).json({
+      success: false,
+      error: 'Admin token required'
+    });
+  }
+
+  try {
+    const result = await db.query(
+      'SELECT username, expires_at FROM admin_sessions WHERE token = $1 AND expires_at > NOW()',
+      [token]
+    );
+
+    if (result.rows.length === 0) {
+      logger.warn(`Invalid or expired admin token from ${req.ip}`);
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid or expired admin token'
+      });
+    }
+
+    req.adminUser = { username: result.rows[0].username };
+    next();
+  } catch (error) {
+    logger.error(`Error validating admin token from ${req.ip}:`, error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
+};
+
 /**
  * @swagger
  * /admin/login:
@@ -600,6 +648,12 @@ router.get('/images', validateAdminToken, (req, res) => {
  *           type: integer
  *         required: true
  *         description: Image ID
+ *       - in: query
+ *         name: token
+ *         schema:
+ *           type: string
+ *         required: false
+ *         description: Admin token (alternative to Authorization header)
  *     responses:
  *       200:
  *         description: Image data retrieved successfully
@@ -613,7 +667,7 @@ router.get('/images', validateAdminToken, (req, res) => {
  *       404:
  *         description: Image not found
  */
-router.get('/image/:id', validateAdminToken, (req, res) => {
+router.get('/image/:id', validateAdminTokenFlexible, (req, res) => {
   logger.info(`Admin getImageData request from ${req.adminUser.username} at ${req.ip} for image: ${req.params.id}`);
   adminController.getImageData(req, res);
 });
