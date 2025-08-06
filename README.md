@@ -1,6 +1,15 @@
 # TrackIt Backend
 
-A comprehensive REST API for user management, authentication, and metric tracking with admin dashboard.
+A comprehensive REST API for user management, authentication, and metric tracking with admin dashboard. **Now with full iOS and Android mobile app sync support!**
+
+## 📱 Mobile App Features
+
+- **iOS + Apple Health Integration**: Seamless sync with HealthKit data
+- **Android Support**: Full compatibility without Apple Health dependency  
+- **Offline Sync**: Conflict resolution for offline-first mobile apps
+- **Real-time Sync**: Incremental sync with timestamp-based change detection
+- **No Duplicates**: UUID-based deduplication across platforms
+- **Soft Deletes**: Sync deletions across devices without data loss
 
 ## Table of Contents
 
@@ -10,6 +19,7 @@ A comprehensive REST API for user management, authentication, and metric trackin
 - [Configuration](#configuration)
 - [Project Structure](#project-structure)
 - [Database](#database)
+- [Mobile App Integration](#mobile-app-integration)
 - [Running the Server](#running-the-server)
 - [API Documentation](#api-documentation)
 - [Admin Dashboard](#admin-dashboard)
@@ -219,13 +229,30 @@ The application uses PostgreSQL with the following tables:
 - `user_id`: Reference to user who created custom type (INTEGER, nullable)
 - `category`: Category of the metric type (VARCHAR)
 
-### Metric Entries Table
-- `id`: Serial primary key
+### Metric Entries Table (Enhanced for Mobile Sync)
+- `id`: UUID primary key (supports client-generated UUIDs)
 - `user_id`: Reference to users table (INTEGER)
 - `metric_type_id`: Reference to metric_types table (INTEGER)
-- `value`: Metric value (BIGINT)
-- `date`: Date of the metric entry (DATE)
-- `is_apple_health`: Is from Apple Health (BOOLEAN)
+- `metric_type`: Metric type as text (TEXT) - e.g., "weight", "steps"
+- `value`: Metric value (DECIMAL)
+- `unit`: Unit of measurement (TEXT) - e.g., "kg", "steps", "hours"
+- `date`: Timestamp of the measurement (TIMESTAMP)
+- `source`: Data source (TEXT) - "app" for manual entry, "apple_health" for HealthKit
+- `last_updated_at`: Last modification timestamp (TIMESTAMP) - for conflict resolution
+- `is_deleted`: Soft delete flag (BOOLEAN) - for sync-friendly deletions
+
+**Key Mobile Sync Features:**
+- **UUID Support**: Clients can specify UUIDs to prevent duplicates across platforms
+- **Source Tracking**: Distinguish between manual entries and Apple Health data
+- **Conflict Resolution**: `last_updated_at` timestamps enable proper sync conflict handling
+- **Soft Deletes**: Deletions are synced across devices without permanent data loss
+- **Flexible Units**: Support different measurement units (kg/lbs, etc.)
+- **Automatic Triggers**: `last_updated_at` is automatically updated on changes
+
+**Performance Optimizations:**
+- Indexed on `source`, `last_updated_at`, and `is_deleted` for fast mobile queries
+- Partial unique index ensures no duplicate active entries per user/type/date
+- `active_metric_entries` view for easy querying of non-deleted entries
 
 **Default Metric Types**: The system automatically seeds 12 default body measurement metric types (Weight, Height, Body Fat, Waist, Bicep, Chest, Thigh, Shoulder, Glutes, Calf, Neck, Forearm).
 
@@ -246,6 +273,173 @@ GRANT ALL PRIVILEGES ON DATABASE trackitdb TO dev;
 4. Update your `.env` file with the correct DATABASE_URL
 
 The database tables and default data are automatically created when the application starts.
+
+## Mobile App Integration
+
+TrackIt Backend is designed from the ground up to support iOS and Android mobile applications with robust offline sync capabilities.
+
+### Platform Support
+
+#### iOS + Apple Health
+```javascript
+// Create entry from Apple Health (HealthKit UUID reused)
+POST /api/metrics
+{
+  "id": "E621E1F8-C36C-495A-93FC-0C247A3E6E5F",  // Apple Health UUID
+  "metric_type": "weight", 
+  "value": 70.5,
+  "unit": "kg",
+  "timestamp": "2024-01-15T10:00:00Z",
+  "source": "apple_health"
+}
+
+// Manual entry on iOS
+POST /api/metrics
+{
+  "metric_type": "body_fat",
+  "value": 15.2,
+  "unit": "%", 
+  "timestamp": "2024-01-15T18:00:00Z",
+  "source": "app"
+}
+```
+
+#### Android (No Apple Health Dependency)
+```javascript
+// All Android entries use source: "app"
+POST /api/metrics  
+{
+  "metric_type": "weight",
+  "value": 70.5,
+  "unit": "kg",
+  "timestamp": "2024-01-15T10:00:00Z",
+  "source": "app" 
+}
+```
+
+### Sync Architecture
+
+#### No Duplicates Strategy
+- **Same UUID Across Platforms**: Use identical UUIDs for the same data item
+- **Apple Health UUIDs**: Reuse HealthKit UUIDs when available via metadata
+- **Client-Generated UUIDs**: Android and manual iOS entries use client-generated UUIDs
+
+#### Conflict Resolution
+```javascript
+// Update with conflict detection
+PUT /api/metrics/{entryId}
+{
+  "value": 71.0,
+  "client_last_updated_at": "2024-01-15T09:00:00Z"
+}
+
+// Response codes:
+// 200 - Updated successfully  
+// 409 - Conflict: Server data is newer
+// 410 - Entry was deleted
+```
+
+#### Incremental Sync
+```javascript
+// Get all changes since last sync
+GET /api/metrics/sync/changes?since_timestamp=2024-01-15T08:00:00Z
+
+// Response includes:
+{
+  "entries": [...],  // All changed entries (including deleted ones)
+  "has_more": false,
+  "server_timestamp": "2024-01-15T10:30:00Z"  // For next sync
+}
+```
+
+#### Soft Delete System
+```javascript
+// Soft delete (syncs across devices)
+DELETE /api/metrics/{entryId}
+// Entry marked is_deleted=true, still returned in sync
+
+// Restore deleted entry
+POST /api/metrics/{entryId}/restore
+
+// Permanent delete (admin only)
+DELETE /api/metrics/{entryId}?hard_delete=true
+```
+
+### Mobile Implementation Guide
+
+#### 1. Initial Sync
+1. Call `/api/metrics` to get all user data
+2. Store `server_timestamp` from response
+3. Save data to local database (SQLite/Core Data)
+
+#### 2. Incremental Sync  
+1. Call `/api/metrics/sync/changes?since_timestamp={lastSync}`
+2. Apply changes to local database
+3. Handle conflicts by comparing timestamps
+4. Update stored `server_timestamp`
+
+#### 3. Offline-First Architecture
+1. **Create**: Generate UUID locally, sync when online
+2. **Update**: Store locally with timestamp, sync with conflict detection  
+3. **Delete**: Mark as deleted locally, sync soft delete when online
+4. **Conflict Resolution**: Server wins on timestamp comparison
+
+#### 4. Data Source Management
+- **iOS**: Track `source` field ("app" vs "apple_health")
+- **Android**: Always use `source: "app"`  
+- **Filtering**: Query by source to separate manual vs health app data
+
+### Example Mobile Sync Flow
+
+```javascript
+class MobileSync {
+  async performSync() {
+    try {
+      // 1. Upload local changes first
+      await this.uploadLocalChanges();
+      
+      // 2. Download server changes
+      const changes = await this.downloadChanges();
+      
+      // 3. Apply changes with conflict resolution
+      for (const entry of changes.entries) {
+        await this.applyServerChange(entry);
+      }
+      
+      // 4. Update last sync timestamp
+      await this.updateLastSyncTimestamp(changes.server_timestamp);
+      
+    } catch (error) {
+      console.error('Sync failed:', error);
+      // Implement exponential backoff retry
+    }
+  }
+  
+  async applyServerChange(serverEntry) {
+    const localEntry = await this.getLocalEntry(serverEntry.id);
+    
+    if (!localEntry) {
+      // New entry from server
+      if (!serverEntry.is_deleted) {
+        await this.createLocalEntry(serverEntry);
+      }
+    } else if (serverEntry.is_deleted) {
+      // Server deleted entry
+      await this.deleteLocalEntry(serverEntry.id);
+    } else {
+      // Check for conflicts
+      const serverTime = new Date(serverEntry.last_updated_at);
+      const localTime = new Date(localEntry.last_updated_at);
+      
+      if (serverTime > localTime) {
+        // Server wins - update local
+        await this.updateLocalEntry(serverEntry);
+      }
+      // Local wins - no action needed
+    }
+  }
+}
+```
 
 ## Running the Server
 
@@ -370,17 +564,89 @@ The system uses multiple authentication mechanisms:
 
 All metric endpoints require: `Authorization: Bearer token` header
 
-#### Create Metric Entry
+#### Get Metric Entries (Enhanced for Mobile)
+- **GET** `/api/metrics`
+- **Query Parameters**:
+  - `metric_type_id`: Filter by metric type ID
+  - `metric_type`: Filter by metric type name (e.g., "weight", "steps")
+  - `source`: Filter by source ("app" or "apple_health")  
+  - `include_deleted`: Include soft-deleted entries (default: false)
+  - `since_timestamp`: Get entries modified since timestamp (for sync)
+  - `limit`: Max entries to return (default: 100)
+  - `offset`: Pagination offset (default: 0)
+- **Returns**: Paginated list of metric entries with sync metadata
+
+#### Create Metric Entry (Mobile Sync Compatible)
 - **POST** `/api/metrics`
-- **Body**: `{ "metric_type_id": 1, "value": 75, "date": "2024-03-25", "is_apple_health": false }`
-- **Returns**: Entry ID and success message
+- **Body (New Format)**:
+```json
+{
+  "id": "optional-uuid",           // Optional: Client-generated UUID
+  "metric_type": "weight",         // Metric type name  
+  "metric_type_id": 1,            // Alternative: Metric type ID
+  "value": 70.5,
+  "unit": "kg",
+  "timestamp": "2024-03-25T10:00:00Z",  // ISO 8601 timestamp
+  "date": "2024-03-25",           // Alternative: Date only
+  "source": "app"                // "app" or "apple_health"
+}
+```
+- **Body (Legacy Format - Still Supported)**:
+```json
+{
+  "metric_type_id": 1, 
+  "value": 75, 
+  "date": "2024-03-25", 
+  "is_apple_health": false
+}
+```
+- **Returns**: Complete entry with sync metadata
 
-#### Update Metric Entry
+#### Update Metric Entry (With Conflict Resolution)
 - **PUT** `/api/metrics/:entryId`
-- **Body**: `{ "value": 76, "date": "2024-03-26" }` (partial updates allowed)
+- **Body**:
+```json
+{
+  "value": 71.0,
+  "unit": "kg",
+  "timestamp": "2024-03-26T10:00:00Z",
+  "source": "app",
+  "client_last_updated_at": "2024-03-25T15:30:00Z"  // For conflict detection
+}
+```
+- **Response Codes**:
+  - `200`: Updated successfully
+  - `409`: Conflict - server data is newer  
+  - `410`: Entry is deleted
 
-#### Delete Metric Entry
+#### Delete Metric Entry (Soft Delete)
 - **DELETE** `/api/metrics/:entryId`
+- **Query Parameters**:
+  - `hard_delete`: If true, permanently delete (default: false)
+- **Default Behavior**: Soft delete (marks as deleted, syncs across devices)
+- **Returns**: Deleted entry metadata for sync
+
+#### Restore Deleted Entry
+- **POST** `/api/metrics/:entryId/restore`
+- **Returns**: Restored entry
+
+#### Sync Changes (Mobile Sync Endpoint)
+- **GET** `/api/metrics/sync/changes`
+- **Query Parameters**:
+  - `since_timestamp`: **Required** - Get changes since this timestamp
+  - `limit`: Max changes to return (default: 1000)
+- **Returns**:
+```json
+{
+  "entries": [...],              // All changed entries (including deleted)
+  "has_more": boolean,           // More changes available
+  "server_timestamp": "..."      // Use for next sync call
+}
+```
+
+#### Get Metric Types
+- **GET** `/api/metrics/types`
+- **Returns**: Available metric types with units
 
 ### Admin Routes (`/admin`)
 
@@ -436,8 +702,13 @@ The API returns consistent error responses:
 - `401`: Unauthorized (invalid/missing token)
 - `403`: Forbidden (insufficient permissions)
 - `404`: Not Found
-- `409`: Conflict (duplicate data)
+- `409`: Conflict (sync conflict - server data is newer)
+- `410`: Gone (entry was deleted)
 - `500`: Internal Server Error
+
+**Mobile Sync Specific Codes:**
+- `409 Conflict`: Server has newer data than client - client should sync server changes
+- `410 Gone`: Entry was soft-deleted - client should remove from local storage
 
 ## Hardware Monitoring
 
@@ -506,12 +777,20 @@ Customize logging in `utils/logger.js`:
 
 1. **Environment Variables**: Secure storage of secrets in production
 2. **Database**: PostgreSQL with proper connection pooling and backup strategy
+   - **Mobile Sync Requirements**: Ensure PostgreSQL supports UUID extension 
+   - **Migration**: New installations automatically get mobile-ready schema
+   - **Performance**: Consider read replicas for high-traffic mobile apps
 3. **Logging**: Persistent log storage and rotation (consider ELK stack for production)
 4. **Hardware Monitoring**: Ensure lm-sensors is installed and configured on Linux servers
 5. **HTTPS**: Use reverse proxy (nginx/Apache) for SSL termination
 6. **Process Management**: Use PM2, Docker, or Kubernetes for process management
 7. **API Documentation**: Swagger UI is disabled in production for security
 8. **Load Balancing**: Consider multiple instances behind a load balancer for high availability
+9. **Mobile App Considerations**:
+   - **CDN**: Consider CDN for API responses if serving global mobile apps
+   - **Rate Limiting**: Implement rate limiting for sync endpoints
+   - **Monitoring**: Track sync performance and conflict rates
+   - **Backup Strategy**: Soft deletes mean more data retention - plan accordingly
 
 ## Client Implementation Guide
 
@@ -527,11 +806,42 @@ Customize logging in `utils/logger.js`:
 3. Allow users to manage active sessions
 4. Handle session limits gracefully
 
+### Mobile App Sync Implementation
+
+#### Data Storage
+1. **Local Database**: Use SQLite (Android) or Core Data (iOS) for offline storage
+2. **UUID Management**: Generate UUIDs locally, reuse Apple Health UUIDs when available
+3. **Sync State**: Track last sync timestamp per user
+4. **Conflict Resolution**: Store client-side timestamps for conflict detection
+
+#### Sync Strategy
+```javascript
+// Recommended sync intervals
+- **Real-time**: On app foreground/background
+- **Periodic**: Every 15-30 minutes when app is active
+- **Manual**: User-initiated sync button
+- **Conflict Handling**: Always prefer server data for conflicts
+```
+
+#### Apple Health Integration (iOS)
+1. **Permission Handling**: Request HealthKit permissions appropriately
+2. **UUID Preservation**: Use HealthKit metadata UUIDs when creating entries
+3. **Source Differentiation**: Mark entries with proper source ("apple_health" vs "app")
+4. **Background Sync**: Handle HealthKit updates in background
+
+#### Offline Support
+1. **Queue System**: Queue operations when offline
+2. **Conflict Resolution**: Handle 409/410 responses gracefully
+3. **User Feedback**: Show sync status to users
+4. **Data Integrity**: Validate data before sync
+
 ### Error Handling
 1. Parse error responses consistently
 2. Show user-friendly error messages
 3. Handle network connectivity issues
 4. Implement retry logic for failed requests
+5. **Mobile Specific**: Handle 409 conflicts and 410 deleted entries
+6. **Sync Errors**: Implement exponential backoff for sync failures
 
 ## Email Service
 
@@ -650,6 +960,32 @@ lsof -i :3000
 
 # Kill process if needed
 kill -9 <PID>
+```
+
+**Mobile Sync Migration**:
+```bash
+# If upgrading from older version, migration runs automatically on startup
+npm start
+
+# Check if migration completed successfully
+# Look for "Migration 005_update_metrics_for_mobile_sync.sql completed" in logs
+
+# Verify new columns exist
+psql -d your_database -c "\d metric_entries"
+# Should show: source, last_updated_at, is_deleted, unit, metric_type columns
+```
+
+**Mobile App Testing**:
+```bash
+# Test sync endpoints
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:3000/api/metrics/sync/changes?since_timestamp=2024-01-01T00:00:00Z"
+
+# Test create with mobile format
+curl -X POST -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"metric_type":"weight","value":70.5,"unit":"kg","timestamp":"2024-01-15T10:00:00Z","source":"app"}' \
+  http://localhost:3000/api/metrics
 ```
 
 ## Contributing
