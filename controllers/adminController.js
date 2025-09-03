@@ -2,6 +2,7 @@ const userService = require('../services/userService');
 const sessionService = require('../services/sessionService');
 const hardwareService = require('../services/hardwareService');
 const logger = require('../utils/logger');
+const { db } = require('../database');
 
 exports.getAllUserData = async (req, res) => {
   logger.info('Admin request - Getting all user data');
@@ -307,3 +308,189 @@ function getTimeFilter(range) {
       return null;
   }
 }
+
+// Image management functions
+exports.getAllImages = async (req, res) => {
+  logger.info('Admin getAllImages request');
+  
+  try {
+    const result = await db.query(`
+      SELECT 
+        i.id,
+        i.user_id,
+        u.username,
+        i.image_type_id,
+        it.name AS image_type_name,
+        i.uploaded_at,
+        i.deleted,
+        i.deleted_at,
+        LENGTH(i.data) AS image_size_bytes
+      FROM images i
+      JOIN users u ON i.user_id = u.id
+      JOIN image_types it ON i.image_type_id = it.id
+      ORDER BY i.uploaded_at DESC
+    `);
+    
+    logger.info(`Retrieved ${result.rows.length} images for admin`);
+    res.status(200).json({
+      success: true,
+      images: result.rows
+    });
+  } catch (error) {
+    logger.error('Error getting all images for admin:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error retrieving images',
+      error: error.message
+    });
+  }
+};
+
+exports.getImageData = async (req, res) => {
+  const { id } = req.params;
+  logger.info(`Admin getImageData request for image ID: ${id}`);
+  
+  try {
+    const result = await db.query(`
+      SELECT 
+        i.id,
+        i.user_id,
+        u.username,
+        i.image_type_id,
+        it.name AS image_type_name,
+        i.data,
+        i.uploaded_at,
+        i.deleted,
+        i.deleted_at
+      FROM images i
+      JOIN users u ON i.user_id = u.id
+      JOIN image_types it ON i.image_type_id = it.id
+      WHERE i.id = $1
+    `, [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Image not found'
+      });
+    }
+    
+    const image = result.rows[0];
+    
+    // Set appropriate content type and headers for image display
+    res.set({
+      'Content-Type': 'image/jpeg',
+      'Content-Length': image.data.length,
+      'Cache-Control': 'private, max-age=3600',
+      'Content-Disposition': `inline; filename="image_${image.id}_${image.image_type_name}.jpg"`
+    });
+    
+    res.send(image.data);
+  } catch (error) {
+    logger.error(`Error getting image data for ID ${id}:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'Error retrieving image data',
+      error: error.message
+    });
+  }
+};
+
+exports.softDeleteImage = async (req, res) => {
+  const { id } = req.body;
+  logger.info(`Admin softDeleteImage request for image ID: ${id}`);
+  
+  try {
+    const result = await db.query(`
+      UPDATE images 
+      SET deleted = TRUE, deleted_at = NOW() 
+      WHERE id = $1 AND deleted = FALSE
+      RETURNING *
+    `, [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Image not found or already deleted'
+      });
+    }
+    
+    logger.info(`Image ${id} soft deleted by admin`);
+    res.status(200).json({
+      success: true,
+      message: 'Image soft deleted successfully'
+    });
+  } catch (error) {
+    logger.error(`Error soft deleting image ${id}:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'Error soft deleting image',
+      error: error.message
+    });
+  }
+};
+
+exports.permanentDeleteImage = async (req, res) => {
+  const { id } = req.body;
+  logger.info(`Admin permanentDeleteImage request for image ID: ${id}`);
+  
+  try {
+    const result = await db.query(`
+      DELETE FROM images WHERE id = $1 RETURNING *
+    `, [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Image not found'
+      });
+    }
+    
+    logger.info(`Image ${id} permanently deleted by admin`);
+    res.status(200).json({
+      success: true,
+      message: 'Image permanently deleted successfully'
+    });
+  } catch (error) {
+    logger.error(`Error permanently deleting image ${id}:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'Error permanently deleting image',
+      error: error.message
+    });
+  }
+};
+
+exports.restoreImage = async (req, res) => {
+  const { id } = req.body;
+  logger.info(`Admin restoreImage request for image ID: ${id}`);
+  
+  try {
+    const result = await db.query(`
+      UPDATE images 
+      SET deleted = FALSE, deleted_at = NULL 
+      WHERE id = $1 AND deleted = TRUE
+      RETURNING *
+    `, [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Image not found or not deleted'
+      });
+    }
+    
+    logger.info(`Image ${id} restored by admin`);
+    res.status(200).json({
+      success: true,
+      message: 'Image restored successfully'
+    });
+  } catch (error) {
+    logger.error(`Error restoring image ${id}:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'Error restoring image',
+      error: error.message
+    });
+  }
+};

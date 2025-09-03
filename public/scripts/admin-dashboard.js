@@ -30,6 +30,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Set up image management button
+    const imageManagementBtn = document.getElementById('image-management-btn');
+    if (imageManagementBtn) {
+        imageManagementBtn.addEventListener('click', () => {
+            window.location.href = 'image-management.html';
+        });
+    }
+    
     // Initial hardware info update
     updateHardwareInfo();
     
