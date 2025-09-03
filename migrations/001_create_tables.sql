@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS metric_entries (
   client_uuid TEXT NOT NULL,
   value DOUBLE PRECISION NOT NULL,
   entry_date DATE NOT NULL,
-  source TEXT,
+  source TEXT NOT NULL DEFAULT 'manual',
   is_deleted BOOLEAN DEFAULT FALSE,
   version INTEGER DEFAULT 1 NOT NULL,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,

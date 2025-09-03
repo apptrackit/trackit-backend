@@ -8,9 +8,9 @@ class MetricService {
       const { metric_type_id, limit = 100, offset = 0 } = options;
       
       let query = `
-        SELECT id, metric_type_id, value, date, is_apple_health
+        SELECT id, metric_type_id, client_uuid, value, entry_date, source, version, created_at, updated_at
         FROM metric_entries 
-        WHERE user_id = $1
+        WHERE user_id = $1 AND is_deleted = FALSE
       `;
       
       const queryParams = [userId];
@@ -23,16 +23,17 @@ class MetricService {
       }
       
       // Add ordering and pagination
-      query += ` ORDER BY date DESC, id DESC`;
+      query += ` ORDER BY entry_date DESC, id DESC`;
       query += ` LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
       queryParams.push(limit, offset);
       
       const result = await db.query(query, queryParams);
       
-      // Convert date to ISO 8601 UTC string for each entry
+      // Normalize timestamp fields to ISO 8601 strings
       const entries = result.rows.map(row => ({
         ...row,
-        date: row.date instanceof Date ? row.date.toISOString() : row.date
+        created_at: row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at,
+        updated_at: row.updated_at instanceof Date ? row.updated_at.toISOString() : row.updated_at
       }));
       
       // Get total count for pagination
@@ -69,7 +70,7 @@ class MetricService {
   }
 
   // Create a new metric entry
-  async createMetricEntry(userId, metricTypeId, value, date, isAppleHealth = false) {
+  async createMetricEntry(userId, metricTypeId, clientUuid, value, entryDate, source = null) {
     try {
       // Check if the metric_type_id exists
       const typeCheck = await db.query('SELECT id FROM metric_types WHERE id = $1', [metricTypeId]);
@@ -78,13 +79,19 @@ class MetricService {
       }
 
       const result = await db.query(
-        `INSERT INTO metric_entries (user_id, metric_type_id, value, date, is_apple_health)
-         VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-        [userId, metricTypeId, value, date, isAppleHealth]
+        `INSERT INTO metric_entries (user_id, metric_type_id, client_uuid, value, entry_date, source)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+        [userId, metricTypeId, clientUuid, value, entryDate, source]
       );
 
       return { entryId: result.rows[0].id };
     } catch (error) {
+      if (error && error.code === '23505') {
+        // Unique violation on (user_id, client_uuid)
+        const duplicateError = new Error('Duplicate client_uuid for this user');
+        duplicateError.code = 'DUPLICATE_CLIENT_UUID';
+        throw duplicateError;
+      }
       logger.error('Error creating metric entry:', error);
       throw error;
     }
@@ -93,7 +100,7 @@ class MetricService {
   // Update a metric entry
   async updateMetricEntry(userId, entryId, updateFields) {
     try {
-      const { value, date, is_apple_health } = updateFields;
+      const { value, entry_date, source } = updateFields;
 
       // Build the update query dynamically based on provided fields
       const updates = [];
@@ -104,20 +111,24 @@ class MetricService {
         updates.push(`value = $${paramIndex++}`);
         queryParams.push(value);
       }
-      if (date !== undefined) {
-        updates.push(`date = $${paramIndex++}`);
-        queryParams.push(date);
+      if (entry_date !== undefined) {
+        updates.push(`entry_date = $${paramIndex++}`);
+        queryParams.push(entry_date);
       }
-      if (is_apple_health !== undefined) {
-        updates.push(`is_apple_health = $${paramIndex++}`);
-        queryParams.push(is_apple_health);
+      if (source !== undefined) {
+        updates.push(`source = $${paramIndex++}`);
+        queryParams.push(source);
       }
 
       if (updates.length === 0) {
         throw new Error('No valid fields to update');
       }
 
-      const query = `UPDATE metric_entries SET ${updates.join(', ')} WHERE id = $2 AND user_id = $1 RETURNING id`;
+      // Always bump version and updated_at
+      updates.push('version = version + 1');
+      updates.push('updated_at = CURRENT_TIMESTAMP');
+
+      const query = `UPDATE metric_entries SET ${updates.join(', ')} WHERE id = $2 AND user_id = $1 AND is_deleted = FALSE RETURNING id`;
       const result = await db.query(query, queryParams);
 
       if (result.rowCount === 0) {
@@ -126,7 +137,7 @@ class MetricService {
 
       // Fetch and return the updated entry with date as ISO 8601 string
       const updated = await db.query(
-        'SELECT id, metric_type_id, value, date, is_apple_health FROM metric_entries WHERE id = $1 AND user_id = $2',
+        'SELECT id, metric_type_id, client_uuid, value, entry_date, source, version, created_at, updated_at FROM metric_entries WHERE id = $1 AND user_id = $2',
         [entryId, userId]
       );
       if (updated.rows.length === 0) {
@@ -135,7 +146,8 @@ class MetricService {
       const row = updated.rows[0];
       return {
         ...row,
-        date: row.date instanceof Date ? row.date.toISOString() : row.date
+        created_at: row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at,
+        updated_at: row.updated_at instanceof Date ? row.updated_at.toISOString() : row.updated_at
       };
     } catch (error) {
       logger.error('Error updating metric entry:', error);
@@ -147,7 +159,7 @@ class MetricService {
   async deleteMetricEntry(userId, entryId) {
     try {
       const result = await db.query(
-        'DELETE FROM metric_entries WHERE id = $1 AND user_id = $2 RETURNING id',
+        'UPDATE metric_entries SET is_deleted = TRUE, version = version + 1, updated_at = CURRENT_TIMESTAMP WHERE id = $1 AND user_id = $2 AND is_deleted = FALSE RETURNING id',
         [entryId, userId]
       );
 

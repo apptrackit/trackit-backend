@@ -21,10 +21,22 @@ router.use(validateToken);
  *           schema:
  *             type: object
  *             required:
+ *               - metric_type_id
+ *               - client_uuid
  *               - value
+ *               - entry_date
  *             properties:
+ *               metric_type_id:
+ *                 type: integer
+ *               client_uuid:
+ *                 type: string
  *               value:
  *                 type: number
+ *               entry_date:
+ *                 type: string
+ *                 format: date
+ *               source:
+ *                 type: string
  *     responses:
  *       201:
  *         description: Metric entry created successfully
@@ -53,11 +65,14 @@ router.post('/', metricController.createMetricEntry);
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - value
  *             properties:
  *               value:
  *                 type: number
+ *               entry_date:
+ *                 type: string
+ *                 format: date
+ *               source:
+ *                 type: string
  *     responses:
  *       200:
  *         description: Metric entry updated successfully
@@ -137,12 +152,17 @@ router.delete('/:entryId', metricController.deleteMetricEntry);
  *                         type: string
  *                       metric_type_id:
  *                         type: integer
+ *                       client_uuid:
+ *                         type: string
  *                       value:
  *                         type: number
- *                       date:
+ *                       entry_date:
  *                         type: string
- *                       is_apple_health:
- *                         type: boolean
+ *                         format: date
+ *                       source:
+ *                         type: string
+ *                       version:
+ *                         type: integer
  *                       created_at:
  *                         type: string
  *                       updated_at:
