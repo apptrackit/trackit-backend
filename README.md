@@ -223,9 +223,14 @@ The application uses PostgreSQL with the following tables:
 - `id`: Serial primary key
 - `user_id`: Reference to users table (INTEGER)
 - `metric_type_id`: Reference to metric_types table (INTEGER)
-- `value`: Metric value (BIGINT)
-- `date`: Date of the metric entry (DATE)
-- `is_apple_health`: Is from Apple Health (BOOLEAN)
+- `client_uuid`: UUID coming from the client (TEXT); unique per user (`UNIQUE(user_id, client_uuid)`)
+- `value`: Metric value (DOUBLE PRECISION)
+- `entry_date`: The specific date of the metric entry (DATE)
+- `source`: Data source (TEXT) e.g. `apple_health`, `android_health_connect`, `manual`
+- `is_deleted`: Soft delete flag (BOOLEAN, default false)
+- `version`: Optimistic locking version (INTEGER, default 1, NOT NULL)
+- `created_at`: Creation timestamp (TIMESTAMPTZ, default now)
+- `updated_at`: Last update timestamp (TIMESTAMPTZ, default now)
 
 **Default Metric Types**: The system automatically seeds 12 default body measurement metric types (Weight, Height, Body Fat, Waist, Bicep, Chest, Thigh, Shoulder, Glutes, Calf, Neck, Forearm).
 
@@ -372,12 +377,28 @@ All metric endpoints require: `Authorization: Bearer token` header
 
 #### Create Metric Entry
 - **POST** `/api/metrics`
-- **Body**: `{ "metric_type_id": 1, "value": 75, "date": "2024-03-25", "is_apple_health": false }`
+- **Body**:
+  ```json
+  {
+    "metric_type_id": 1,
+    "client_uuid": "550e8400-e29b-41d4-a716-446655440000",
+    "value": 75.2,
+    "entry_date": "2024-03-25",
+    "source": "manual"
+  }
+  ```
 - **Returns**: Entry ID and success message
 
 #### Update Metric Entry
 - **PUT** `/api/metrics/:entryId`
-- **Body**: `{ "value": 76, "date": "2024-03-26" }` (partial updates allowed)
+- **Body**: Partial updates allowed
+  ```json
+  {
+    "value": 76.0,
+    "entry_date": "2024-03-26",
+    "source": "apple_health"
+  }
+  ```
 
 #### Delete Metric Entry
 - **DELETE** `/api/metrics/:entryId`
