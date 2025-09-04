@@ -4,7 +4,7 @@ const logger = require('../utils/logger');
 // Controller function to get metric entries for a user
 exports.getMetricEntries = async (req, res) => {
   const user_id = req.user.userId;
-  const { metric_type_id, limit = 100, offset = 0 } = req.query;
+  const { metric_type_id, limit = 1000, offset = 0 } = req.query;
 
   logger.info(`Getting metric entries - User: ${user_id}, Type: ${metric_type_id || 'all'}, Limit: ${limit}, Offset: ${offset}`);
 
