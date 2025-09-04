@@ -94,7 +94,7 @@ PORT=3000
 HOST=0.0.0.0
 
 # Security Settings
-SALT=10  # Number of salt rounds for password hashing
+SALT_ROUNDS=10  # Number of salt rounds for password hashing
 
 # Admin Account
 ADMIN_USERNAME=admin
@@ -234,6 +234,22 @@ The application uses PostgreSQL with the following tables:
 
 **Default Metric Types**: The system automatically seeds 12 default body measurement metric types (Weight, Height, Body Fat, Waist, Bicep, Chest, Thigh, Shoulder, Glutes, Calf, Neck, Forearm).
 
+### Image Types Table
+- `id`: Serial primary key
+- `name`: Image type name (VARCHAR, UNIQUE)
+
+### Images Table
+- `id`: Serial primary key
+- `user_id`: Reference to users table (INTEGER, CASCADE on delete)
+- `image_type_id`: Reference to image_types (INTEGER, RESTRICT on delete)
+- `data`: Image binary (BYTEA)
+- `uploaded_at`: Upload timestamp (TIMESTAMP)
+- `deleted`: Soft delete flag (BOOLEAN, default false)
+- `deleted_at`: Deletion timestamp (TIMESTAMP, nullable)
+
+### Views
+- `images_with_users`: Convenience view joining `images`, `users`, and `image_types`
+
 ## Database Setup
 
 1. Install PostgreSQL on your system
@@ -268,7 +284,7 @@ The server will run on `http://localhost:3000` by default.
 
 ## API Documentation
 
-Interactive API documentation is available via Swagger UI when running in development mode:
+Interactive API documentation is available via Swagger UI when running in development mode (`NODE_ENV` in `dev`, `develop`, or `development`):
 - **Swagger UI**: `http://localhost:3000/api-docs`
 
 The Swagger documentation provides:
@@ -375,6 +391,18 @@ The system uses multiple authentication mechanisms:
 
 All metric endpoints require: `Authorization: Bearer token` header
 
+#### List Metric Entries
+- **GET** `/api/metrics`
+- **Query**:
+  - `metric_type_id` (optional): filter by type id
+  - `limit` (default 100)
+  - `offset` (default 0)
+- **Returns**: `{ success, entries: [...], total }`
+
+#### List Metric Types
+- **GET** `/api/metrics/types`
+- **Returns**: `{ success, types: [{ id, name, unit }] }`
+
 #### Create Metric Entry
 - **POST** `/api/metrics`
 - **Body**:
@@ -402,6 +430,31 @@ All metric endpoints require: `Authorization: Bearer token` header
 
 #### Delete Metric Entry
 - **DELETE** `/api/metrics/:entryId`
+
+### Image Management Routes (`/api/images`)
+
+All image endpoints require: `Authorization: Bearer token` header
+
+#### List Images
+- **GET** `/api/images`
+- **Query**:
+  - `limit` (default 100)
+  - `offset` (default 0)
+- **Returns**: `{ success, images: [{ id, image_type_id, filename, date, file_size, mime_type }], total }`
+
+#### Download Image
+- **GET** `/api/images/:id/download`
+- **Returns**: Image binary (Content-Type: image/jpeg)
+
+#### Upload Image
+- **POST** `/api/images`
+- **Form Data** (`multipart/form-data`):
+  - `file` (binary, required, max 10MB, image/*)
+  - `imageTypeId` (integer, required)
+- **Returns**: `{ success, id, user_id, image_type_id, uploaded_at }`
+
+#### Delete Image
+- **DELETE** `/api/images/:id`
 
 ### Admin Routes (`/admin`)
 
@@ -435,6 +488,22 @@ All other admin endpoints require: `Authorization: Bearer admin_token`
 #### Hardware Monitoring
 - **GET** `/admin/hardwareinfo` - Get server hardware stats
 - **Returns**: CPU temperature, fan speed, uptime with color coding
+
+#### Environment
+- **GET** `/admin/environment` - Get environment info
+- **Returns**: `{ success, environment: development|production, nodeEnv }`
+
+#### User Sessions
+- **POST** `/admin/user-sessions` - List sessions for a user
+- **POST** `/admin/logout-user-session` - Logout a specific session
+- **POST** `/admin/logout-all-user-sessions` - Logout all sessions for a user
+
+#### Image Management (Admin)
+- **GET** `/admin/images` - List all images
+- **GET** `/admin/image/:id` - Fetch image binary by id (supports `?token=` as alternative auth)
+- **POST** `/admin/soft-delete-image` - Soft-delete image by id
+- **POST** `/admin/permanent-delete-image` - Permanently delete image by id
+- **POST** `/admin/restore-image` - Restore a soft-deleted image by id
 
 #### Legacy Endpoint (Deprecated)
 - **POST** `/admin/check` - Legacy admin credentials check (use login instead)
@@ -486,7 +555,7 @@ sudo sensors-detect
 5. **Admin Token Expiration**: 1-hour admin sessions with auto-cleanup
 6. **Input Validation**: Email format, required fields
 7. **SQL Injection Protection**: Parameterized queries
-8. **CORS Protection**: Configurable origin restrictions
+8. **CORS**: Configure at reverse proxy or add `cors` middleware if exposing cross-origin
 
 ## Development
 
@@ -504,6 +573,7 @@ sudo sensors-detect
 - `bcrypt` - Password hashing
 - `winston` - Logging framework
 - `nodemailer` - Email service
+- `multer` - Multipart/form-data parsing for image uploads (10MB max per file)
 
 **Development Dependencies**:
 - `nodemon` - Auto-restart during development
