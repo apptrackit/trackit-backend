@@ -89,6 +89,41 @@ router.use(validateToken);
  *     responses:
  *       200:
  *         description: Images retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 images:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         example: "123"
+ *                       image_type_id:
+ *                         type: integer
+ *                         example: 1
+ *                       filename:
+ *                         type: string
+ *                         example: "image_123.jpg"
+ *                       date:
+ *                         type: string
+ *                         format: date-time
+ *                         example: "2025-09-07T10:30:00.000Z"
+ *                       file_size:
+ *                         type: integer
+ *                         example: 1024
+ *                       mime_type:
+ *                         type: string
+ *                         example: "image/jpeg"
+ *                 total:
+ *                   type: integer
+ *                   example: 25
  *       401:
  *         description: Invalid authentication
  *       500:
@@ -149,12 +184,46 @@ router.get('/:id/download', imageController.downloadImage);
  *                 description: Image file (max 10MB)
  *               imageTypeId:
  *                 type: integer
+ *               uploadedAt:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Upload date and time (optional, defaults to current time)
  *             required:
  *               - file
  *               - imageTypeId
  *     responses:
  *       201:
  *         description: Image uploaded successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 id:
+ *                   type: integer
+ *                   example: 123
+ *                 user_id:
+ *                   type: integer
+ *                   example: 456
+ *                 image_type_id:
+ *                   type: integer
+ *                   example: 1
+ *                 uploaded_at:
+ *                   type: string
+ *                   format: date-time
+ *                   example: "2025-09-07T10:30:00.000Z"
+ *                 deleted:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Image uploaded successfully"
+ *                 showToast:
+ *                   type: boolean
+ *                   example: true
  *       400:
  *         description: Missing imageTypeId or file data, or file too large
  *       401:
