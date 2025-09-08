@@ -330,6 +330,7 @@
             loadImages();
             setupEventListeners();
             fetchEnvironmentInfo();
+            processURLParameters();
         });
 
         function setupEventListeners() {
@@ -357,6 +358,35 @@
                 if (event.target == modal) {
                     modal.style.display = 'none';
                 }
+            }
+        }
+
+        function processURLParameters() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const userParam = urlParams.get('user');
+            
+            if (userParam) {
+                // Set the user filter input
+                const userFilter = document.getElementById('userFilter');
+                userFilter.value = userParam;
+                
+                // Add visual highlight to the filter
+                userFilter.style.borderColor = '#4299e1';
+                userFilter.style.boxShadow = '0 0 0 2px rgba(66, 153, 225, 0.3)';
+                
+                // Show a notification that we're filtering by user
+                showNotification(`🔍 Filtering images for user: ${userParam}`, 'info');
+                
+                // Apply the filter after images are loaded
+                setTimeout(() => {
+                    filterImages();
+                }, 500);
+                
+                // Remove highlight after 3 seconds
+                setTimeout(() => {
+                    userFilter.style.borderColor = '';
+                    userFilter.style.boxShadow = '';
+                }, 3000);
             }
         }
 
