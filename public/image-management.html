@@ -319,6 +319,7 @@
     <script>
         let allImages = [];
         let bearerToken = localStorage.getItem('adminBearerToken');
+        let exactUserFilter = null; // For exact username matching from URL
 
         // Check authentication
         if (!bearerToken) {
@@ -330,6 +331,7 @@
             loadImages();
             setupEventListeners();
             fetchEnvironmentInfo();
+            processURLParameters();
         });
 
         function setupEventListeners() {
@@ -343,7 +345,11 @@
             // Filters
             document.getElementById('statusFilter').addEventListener('change', filterImages);
             document.getElementById('typeFilter').addEventListener('change', filterImages);
-            document.getElementById('userFilter').addEventListener('input', filterImages);
+            document.getElementById('userFilter').addEventListener('input', function() {
+                // Clear exact filter when user manually types in search
+                exactUserFilter = null;
+                filterImages();
+            });
 
             // Modal
             const modal = document.getElementById('imageModal');
@@ -357,6 +363,24 @@
                 if (event.target == modal) {
                     modal.style.display = 'none';
                 }
+            }
+        }
+
+        function processURLParameters() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const userParam = urlParams.get('user');
+            
+            if (userParam) {
+                // Set the exact user filter (invisible to user)
+                exactUserFilter = userParam.toLowerCase();
+                
+                // Show a notification that we're filtering by user
+                showNotification(`🔍 Filtering images for user: ${userParam}`, 'info');
+                
+                // Apply the filter after images are loaded
+                setTimeout(() => {
+                    filterImages();
+                }, 500);
             }
         }
 
@@ -519,7 +543,12 @@
                 filtered = filtered.filter(img => img.image_type_name === typeFilter);
             }
 
-            // User filter
+            // Exact user filter (invisible, for URL-based filtering)
+            if (exactUserFilter) {
+                filtered = filtered.filter(img => img.username.toLowerCase() === exactUserFilter);
+            }
+            
+            // User filter - partial match (original search functionality)
             if (userFilter) {
                 filtered = filtered.filter(img => img.username.toLowerCase().includes(userFilter));
             }
