@@ -549,9 +549,9 @@
                 filtered = filtered.filter(img => img.image_type_name === typeFilter);
             }
 
-            // User filter
+            // User filter - exact match
             if (userFilter) {
-                filtered = filtered.filter(img => img.username.toLowerCase().includes(userFilter));
+                filtered = filtered.filter(img => img.username.toLowerCase() === userFilter);
             }
 
             displayImages(filtered);
