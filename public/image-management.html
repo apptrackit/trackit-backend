@@ -319,6 +319,7 @@
     <script>
         let allImages = [];
         let bearerToken = localStorage.getItem('adminBearerToken');
+        let exactUserFilter = null; // For exact username matching from URL
 
         // Check authentication
         if (!bearerToken) {
@@ -344,7 +345,11 @@
             // Filters
             document.getElementById('statusFilter').addEventListener('change', filterImages);
             document.getElementById('typeFilter').addEventListener('change', filterImages);
-            document.getElementById('userFilter').addEventListener('input', filterImages);
+            document.getElementById('userFilter').addEventListener('input', function() {
+                // Clear exact filter when user manually types in search
+                exactUserFilter = null;
+                filterImages();
+            });
 
             // Modal
             const modal = document.getElementById('imageModal');
@@ -366,13 +371,8 @@
             const userParam = urlParams.get('user');
             
             if (userParam) {
-                // Set the user filter input
-                const userFilter = document.getElementById('userFilter');
-                userFilter.value = userParam;
-                
-                // Add visual highlight to the filter
-                userFilter.style.borderColor = '#4299e1';
-                userFilter.style.boxShadow = '0 0 0 2px rgba(66, 153, 225, 0.3)';
+                // Set the exact user filter (invisible to user)
+                exactUserFilter = userParam.toLowerCase();
                 
                 // Show a notification that we're filtering by user
                 showNotification(`🔍 Filtering images for user: ${userParam}`, 'info');
@@ -381,12 +381,6 @@
                 setTimeout(() => {
                     filterImages();
                 }, 500);
-                
-                // Remove highlight after 3 seconds
-                setTimeout(() => {
-                    userFilter.style.borderColor = '';
-                    userFilter.style.boxShadow = '';
-                }, 3000);
             }
         }
 
@@ -549,9 +543,14 @@
                 filtered = filtered.filter(img => img.image_type_name === typeFilter);
             }
 
-            // User filter - exact match
+            // Exact user filter (invisible, for URL-based filtering)
+            if (exactUserFilter) {
+                filtered = filtered.filter(img => img.username.toLowerCase() === exactUserFilter);
+            }
+            
+            // User filter - partial match (original search functionality)
             if (userFilter) {
-                filtered = filtered.filter(img => img.username.toLowerCase() === userFilter);
+                filtered = filtered.filter(img => img.username.toLowerCase().includes(userFilter));
             }
 
             displayImages(filtered);
