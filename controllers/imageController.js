@@ -34,14 +34,13 @@ const getImages = async (req, res) => {
   }
 };
 
-// Add image (expects req.body: { imageTypeId }, req.file.buffer, req.user.id)
 const addImage = async (req, res) => {
   const logger = require('../utils/logger');
   try {
-    const { imageTypeId } = req.body;
+    const { imageTypeId, uploadedAt } = req.body;
     const userId = req.user.userId; // Use userId like metrics controller
     
-    logger.info(`Image upload request - User: ${userId}, ImageTypeId: ${imageTypeId}, HasFile: ${!!req.file}`);
+    logger.info(`Image upload request - User: ${userId}, ImageTypeId: ${imageTypeId}, HasFile: ${!!req.file}, UploadedAt: ${uploadedAt}`);
     
     if (!userId) {
       logger.error('No userId found on request - authentication failed');
@@ -79,12 +78,16 @@ const addImage = async (req, res) => {
     }
 
     logger.info(`Processing image upload - User: ${userId}, Type: ${imageTypeId}, Size: ${data.length} bytes`);
-    const image = await imageService.addImage({ userId, imageTypeId, data });
+    const image = await imageService.addImage({ userId, imageTypeId, data, uploadedAt });
     
     logger.info(`Image upload successful - User: ${userId}, ImageId: ${image.id}`);
     res.status(201).json({
       success: true,
-      ...image,
+      id: image.id,
+      user_id: image.user_id,
+      image_type_id: image.image_type_id,
+      uploaded_at: image.uploaded_at.toISOString(),
+      deleted: image.deleted,
       message: 'Image uploaded successfully',
       showToast: true
     });

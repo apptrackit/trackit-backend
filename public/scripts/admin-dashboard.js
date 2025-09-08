@@ -402,6 +402,16 @@ function displayUserData(data, container) {
                         cell.textContent = 'null';
                     } else if (typeof value === 'object') {
                         cell.textContent = JSON.stringify(value);
+                    } else if (key === 'username') {
+                        // Make username clickable to filter images
+                        const link = document.createElement('a');
+                        link.textContent = value;
+                        link.href = `image-management.html?user=${encodeURIComponent(value)}`;
+                        link.style.color = '#4299e1';
+                        link.style.textDecoration = 'underline';
+                        link.style.cursor = 'pointer';
+                        link.title = `View images for ${value}`;
+                        cell.appendChild(link);
                     } else {
                         cell.textContent = value;
                     }

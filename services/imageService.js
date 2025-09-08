@@ -40,13 +40,21 @@ const getUserImages = async (userId, { limit = 100, offset = 0 }) => {
   }
 };
 
-const addImage = async ({ userId, imageTypeId, data }) => {
+const addImage = async ({ userId, imageTypeId, data, uploadedAt }) => {
   const logger = require('../utils/logger');
-  logger.info('Inserting image into DB', { userId, imageTypeId, dataLength: data ? data.length : 0 });
-  const result = await db.query(
-    `INSERT INTO images (user_id, image_type_id, data) VALUES ($1, $2, $3) RETURNING *`,
-    [userId, imageTypeId, data]
-  );
+  logger.info('Inserting image into DB', { userId, imageTypeId, dataLength: data ? data.length : 0, uploadedAt });
+  
+  let query = `INSERT INTO images (user_id, image_type_id, data`;
+  let values = [userId, imageTypeId, data];
+  
+  if (uploadedAt) {
+    query += ', uploaded_at';
+    values.push(new Date(uploadedAt));
+  }
+  
+  query += `) VALUES (${values.map((_, i) => `$${i + 1}`).join(', ')}) RETURNING *`;
+  
+  const result = await db.query(query, values);
   logger.info('Image insert result', { result: result.rows[0] });
   return result.rows[0];
 };

@@ -49,20 +49,14 @@ CREATE TABLE IF NOT EXISTS metric_entries (
   id SERIAL PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   metric_type_id INTEGER NOT NULL REFERENCES metric_types(id) ON DELETE CASCADE,
-  value DECIMAL(10, 2) NOT NULL,
-  date TIMESTAMP NOT NULL,
-  is_apple_health BOOLEAN DEFAULT FALSE
+  client_uuid TEXT NOT NULL,
+  value DOUBLE PRECISION NOT NULL,
+  entry_date DATE NOT NULL,
+  source TEXT NOT NULL DEFAULT 'manual',
+  is_deleted BOOLEAN DEFAULT FALSE,
+  version INTEGER DEFAULT 1 NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(user_id, client_uuid)
 );
-
--- Ensure unique constraint exists
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'unique_user_metric_date'
-  ) THEN
-    ALTER TABLE metric_entries
-    ADD CONSTRAINT unique_user_metric_date UNIQUE (user_id, metric_type_id, date);
-  END IF;
-END
-$$;
 
